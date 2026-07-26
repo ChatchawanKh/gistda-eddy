@@ -6,43 +6,43 @@ import CssBaseline from '@mui/material/CssBaseline';
 // Design tokens
 // ---------------------------------------------------------------------------
 const BLUE = {
-  50: '#EAF1FE',
-  100: '#D3E2FD',
-  200: '#A7C6FB',
-  300: '#7BA9F8',
-  400: '#4E8DF5',
-  500: '#2563EB', // primary main
-  600: '#1E4FC2',
-  700: '#173C93',
-  800: '#0F2964',
-  900: '#081736',
+  50: '#EAF2FF',
+  100: '#D6E4FF',
+  200: '#ADC9FF',
+  300: '#85ADFF',
+  400: '#5790FF',
+  500: '#0057FF', // primary main
+  600: '#0047D6',
+  700: '#0038AD',
+  800: '#00277A',
+  900: '#001A52',
 };
 
 const SKY = {
-  50: '#EFFAFE',
-  100: '#DBF3FC',
-  200: '#B6E7F9',
-  300: '#8EDBF6',
-  400: '#5CCBF0',
-  500: '#38BDF8', // secondary main
-  600: '#0EA5E9',
-  700: '#0284C7',
-  800: '#036193',
-  900: '#023654',
+  50: '#F0F8FF',
+  100: '#DCEEFF',
+  200: '#B9DCFF',
+  300: '#8CC6FF',
+  400: '#5AAEFF',
+  500: '#2D8CFF', // secondary main
+  600: '#1672E8',
+  700: '#0B5BC2',
+  800: '#084594',
+  900: '#052A5C',
 };
 
 const GRAY = {
-  25: '#FCFCFD',
-  50: '#F8F9FB',
-  100: '#F1F3F6',
-  200: '#E5E8EE',
-  300: '#D3D8E0',
-  400: '#A6ACB9',
-  500: '#7C8494',
-  600: '#5B6272',
-  700: '#404757',
-  800: '#282E3B',
-  900: '#141821',
+  25: '#FCFBF8',
+  50: '#F8F7F4', // background main
+  100: '#F1EFEA',
+  200: '#E6E2DA',
+  300: '#D5D0C6',
+  400: '#B2ABA0',
+  500: '#8A8378',
+  600: '#625D55',
+  700: '#46423C',
+  800: '#2D2A26',
+  900: '#171512',
 };
 
 const RADIUS = 12;
@@ -104,7 +104,7 @@ const theme = createTheme({
       contrastText: '#0B2436',
     },
     background: {
-      default: GRAY[100],
+      default: GRAY[50],
       paper: '#FFFFFF',
     },
     text: {

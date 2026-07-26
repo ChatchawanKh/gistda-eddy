@@ -6,8 +6,10 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   globalIgnores(['dist']),
+
+  // ----- Frontend: src/ (React + browser) -----
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['src/**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -16,6 +18,17 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+  },
+
+  // ----- Backend: server/auth/ (Node.js, ESM) -----
+  {
+    files: ['server/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.node,   // เพิ่ม process, __dirname, module, Buffer ฯลฯ
+      ecmaVersion: 'latest',
+      sourceType: 'module',    // เพราะ server/auth เขียนเป็น ESM (import/export)
     },
   },
 ])

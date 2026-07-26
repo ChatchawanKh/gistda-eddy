@@ -255,14 +255,16 @@ function SidebarContent({ open, activeKey, onSelect, onToggle }) {
                       mb: 0.25,
                       color: isActive ? primary.contrastText : text.primary,
                       background: isActive
-                        ? `linear-gradient(135deg, ${primary.main} 0%, ${primary.dark} 100%)`
+                        // ? `linear-gradient(135deg, ${primary.main} 0%, ${primary.dark} 100%)`
+                        ? primary.main
                         : "transparent",
-                      boxShadow: isActive
-                        ? `0 3px 10px ${alpha(primary.main, 0.28)}`
-                        : "none",
+                      // boxShadow: isActive
+                      //   ? `0 3px 10px ${alpha(primary.main, 0.28)}`
+                      //   : "none",
                       "&:hover": {
                         background: isActive
-                          ? `linear-gradient(135deg, ${primary.main} 0%, ${primary.dark} 100%)`
+                          // ? `linear-gradient(135deg, ${primary.main} 0%, ${primary.dark} 100%)`
+                          ? primary.dark
                           : tint,
                       },
                       transition: "all 0.15s ease",
@@ -324,7 +326,7 @@ function SidebarContent({ open, activeKey, onSelect, onToggle }) {
             gap: 1,
             p: open ? 1 : 0.5,
             borderRadius: `${radius + 2}px`,
-            bgcolor: bg,
+            bgcolor: background.paper,
             justifyContent: open ? "flex-start" : "center",
           }}
         >
