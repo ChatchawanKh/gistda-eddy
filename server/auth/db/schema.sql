@@ -82,7 +82,21 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 
 -- ---------------------------------------------------------
--- 4) ตาราง audit_logs (เสริม เพื่อความโปร่งใสในการบริหารจัดการสิทธิ์)
+-- 4) ตาราง password_reset_tokens (สำหรับ "ลืมรหัสผ่าน" ที่ user ขอ reset เองผ่าน URL)
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    token_hash  VARCHAR(255) NOT NULL,   -- เก็บ hash ของ token ไม่เก็บ plain text (เหมือน refresh_tokens)
+    expires_at  TIMESTAMPTZ NOT NULL,    -- อายุสั้น เช่น 30 นาที
+    used        BOOLEAN NOT NULL DEFAULT FALSE, -- ใช้ครั้งเดียว
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+
+-- ---------------------------------------------------------
+-- 5) ตาราง audit_logs (เสริม เพื่อความโปร่งใสในการบริหารจัดการสิทธิ์)
 -- ---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_logs (
     log_id      BIGSERIAL PRIMARY KEY,

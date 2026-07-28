@@ -28,6 +28,9 @@ server/auth/
 └── server.js               # entry point (Express app)
 ```
 
+> หมายเหตุ: โค้ดฝั่ง backend นี้เขียนเป็น **ES Module** (`import`/`export`) — `package.json` มี `"type": "module"` กำกับไว้แล้ว
+> ไฟล์ `.js` ทุกไฟล์ในโฟลเดอร์นี้จึงต้องใช้ `import ... from '...'` เท่านั้น (ห้ามผสม `require`)
+
 ## 1) ติดตั้งฐานข้อมูล (PG Admin 17 / PostgreSQL)
 
 1. เปิด PG Admin 17 → สร้างฐานข้อมูลใหม่ชื่อ `gistda_fluxsuite`

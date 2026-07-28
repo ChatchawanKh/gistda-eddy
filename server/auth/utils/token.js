@@ -18,12 +18,15 @@ export function generateAccessToken(user) {
 /**
  * สร้าง Refresh Token (อายุยาว) — ใช้ขอ Access Token ใหม่เมื่อหมดอายุ
  * เก็บเฉพาะ hash ไว้ใน DB (refresh_tokens) เพื่อให้ revoke/logout ได้จริง
+ * @param {object} user
+ * @param {string} [expiresIn] - override อายุ token เช่น '30d' (remember me) หรือ '1d' (ไม่ติ๊ก remember me)
+ *                                ถ้าไม่ส่งมา จะใช้ค่า default จาก .env (JWT_REFRESH_EXPIRES_IN)
  */
-export function generateRefreshToken(user) {
+export function generateRefreshToken(user, expiresIn) {
   return jwt.sign(
     { user_id: user.user_id },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
+    { expiresIn: expiresIn || process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
   );
 }
 

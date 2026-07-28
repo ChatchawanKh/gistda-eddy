@@ -106,8 +106,10 @@ const theme = createTheme({
     background: {
       default: GRAY[50],
       paper: '#FFFFFF',
+      light: BLUE[100],
     },
     text: {
+      head: BLUE[500],
       primary: GRAY[900],
       secondary: GRAY[600],
       disabled: GRAY[400],
