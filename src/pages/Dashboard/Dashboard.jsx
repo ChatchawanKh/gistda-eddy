@@ -327,7 +327,19 @@ function SidebarContent({
                     {open ? (
                       button
                     ) : (
-                      <Tooltip title={item.label} placement="right" arrow>
+                      <Tooltip
+                        title={item.label}
+                        placement="right"
+                        slotProps={{
+                          tooltip: {
+                            sx: {
+                              bgcolor: theme.palette.primary.main,
+                              borderRadius: 50,
+                              fontWeight: 400,
+                            },
+                          },
+                        }}
+                      >
                         {button}
                       </Tooltip>
                     )}
@@ -382,7 +394,19 @@ function SidebarContent({
                   {profile.roleLabel}
                 </Typography>
               </Box>
-              <Tooltip title="Log out" arrow>
+              <Tooltip
+                placement="right"
+                title="ออกจากระบบ"
+                slotProps={{
+                  tooltip: {
+                    sx: {
+                      bgcolor: theme.palette.primary.main,
+                      borderRadius: 50,
+                      fontWeight: 400,
+                    },
+                  },
+                }}
+              >
                 <IconButton
                   size="small"
                   onClick={onLogout}

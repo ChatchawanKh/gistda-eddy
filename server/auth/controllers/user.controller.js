@@ -319,3 +319,58 @@ export async function bulkUpdateStatus(req, res) {
     client.release();
   }
 }
+
+/** PATCH /api/users/bulk-role — เปลี่ยนสิทธิ์ผู้ใช้งานหลายรายการพร้อมกัน */
+export async function bulkUpdateRole(req, res) {
+  const { user_ids, role_name, password } = req.body;
+
+  if (!Array.isArray(user_ids) || user_ids.length === 0) {
+    return res.status(400).json({ message: 'กรุณาระบุรายชื่อผู้ใช้งาน' });
+  }
+  if (!role_name) {
+    return res.status(400).json({ message: 'กรุณาระบุสิทธิ์ที่ต้องการเปลี่ยน' });
+  }
+  if (!password) {
+    return res.status(400).json({ message: 'กรุณากรอกรหัสผ่านเพื่อยืนยัน' });
+  }
+  // กัน admin เปลี่ยนสิทธิ์ของตัวเอง — เหมือนกับ updateUserRole เดี่ยว ๆ
+  // ป้องกันกดพลาดจนหลุดจาก admin โดยไม่ได้ตั้งใจ ต้องให้ admin ท่านอื่นเปลี่ยนให้เท่านั้น
+  if (user_ids.includes(req.user.user_id)) {
+    return res.status(400).json({ message: 'ไม่สามารถเปลี่ยนสิทธิ์ของตนเองได้' });
+  }
+
+  const client = await pool.connect();
+  try {
+    const adminResult = await client.query('SELECT password_hash FROM users WHERE user_id = $1', [req.user.user_id]);
+    if (adminResult.rows.length === 0) {
+      return res.status(401).json({ message: 'ไม่พบผู้ใช้งานปัจจุบัน' });
+    }
+    const isMatch = await comparePassword(password, adminResult.rows[0].password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'รหัสผ่านไม่ถูกต้อง' });
+    }
+
+    const roleResult = await client.query('SELECT role_id FROM roles WHERE role_name = $1', [role_name]);
+    if (roleResult.rows.length === 0) {
+      return res.status(400).json({ message: 'ไม่พบสิทธิ์ผู้ใช้งานที่ระบุ' });
+    }
+
+    const result = await client.query(
+      'UPDATE users SET role_id = $1 WHERE user_id = ANY($2::uuid[]) RETURNING user_id, email',
+      [roleResult.rows[0].role_id, user_ids]
+    );
+
+    await client.query(
+      `INSERT INTO audit_logs (actor_id, action, target_id, detail)
+       VALUES ($1, 'BULK_CHANGE_ROLE', NULL, $2)`,
+      [req.user.user_id, JSON.stringify({ new_role: role_name, users: result.rows.map((r) => r.email) })]
+    );
+
+    return res.json({ message: `เปลี่ยนสิทธิ์สำเร็จ ${result.rows.length} รายการ` });
+  } catch (err) {
+    console.error('[bulkUpdateRole]', err);
+    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
+  } finally {
+    client.release();
+  }
+}

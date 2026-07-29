@@ -19,5 +19,6 @@ router.delete('/:id', userController.deleteUser);
 
 router.post('/bulk-delete', userController.bulkDeleteUsers);
 router.patch('/bulk-status', userController.bulkUpdateStatus);
+router.patch('/bulk-role', userController.bulkUpdateRole);
 
 export default router;

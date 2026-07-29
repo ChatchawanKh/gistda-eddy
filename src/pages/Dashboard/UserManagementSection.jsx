@@ -32,6 +32,7 @@ import Alert from "@mui/material/Alert";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
 import Fade from "@mui/material/Fade";
+import Divider from "@mui/material/Divider";
 
 import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -47,6 +48,10 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+
+import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
+import UnfoldMoreRoundedIcon from "@mui/icons-material/UnfoldMoreRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 
 import axiosClient from "../../api/axiosClient";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -88,7 +93,16 @@ const BULK_ACTION_LABELS = {
     confirmLabel: "ลบทั้งหมด",
     color: "error",
   },
+  change_role: {
+    title: "ยืนยันการเปลี่ยนสิทธิ์ผู้ใช้งานหลายรายการ",
+    confirmLabel: "เปลี่ยนสิทธิ์ทั้งหมด",
+    color: "secondary",
+  },
 };
+
+// ข้อความ tooltip ที่ใช้ซ้ำ เมื่อกำลังอยู่ในโหมดเลือกหลายแถว (bulk mode) — บังคับให้ใช้
+// แถบดำเนินการพร้อมกันด้านบนแทนปุ่ม/Chip รายแถว เพื่อไม่ให้สับสนว่า action มีผลกับแถวเดียวหรือทั้งกลุ่ม
+const BULK_MODE_LOCK_HINT = "";
 
 // เงื่อนไขรหัสผ่านที่โชว์เป็น checklist สด ๆ ระหว่างพิมพ์ (ใช้ร่วมกันทั้ง dialog เพิ่มผู้ใช้งาน
 // และ dialog ตั้งรหัสผ่านใหม่ — ไม่รวมกฎ blacklist/ผูกกับอีเมล เพราะแจ้งผ่าน error message ตอน submit แทน)
@@ -236,6 +250,13 @@ export default function UserManagementSection() {
   // --- เลือกหลายแถว + ดำเนินการพร้อมกัน (bulk actions) ---
   const [selectedIds, setSelectedIds] = React.useState(() => new Set());
   const [bulkAction, setBulkAction] = React.useState(null); // { type: 'activate' | 'deactivate' | 'delete', targets: [user,...] }
+  const [bulkRoleValue, setBulkRoleValue] = React.useState("user");
+  const bulkRoleAllSame = React.useMemo(() => {
+    const targets = users.filter((u) => selectedIds.has(u.user_id));
+    if (targets.length === 0) return true;
+    return targets.every((u) => u.role_name === bulkRoleValue);
+  }, [users, selectedIds, bulkRoleValue]);
+
   const [bulkPassword, setBulkPassword] = React.useState("");
   const [bulkError, setBulkError] = React.useState("");
   const [bulkProcessing, setBulkProcessing] = React.useState(false);
@@ -364,7 +385,11 @@ export default function UserManagementSection() {
     if (targets.length === 0) return;
     setBulkError("");
     setBulkPassword("");
-    setBulkAction({ type, targets });
+    setBulkAction({
+      type,
+      targets,
+      role_name: type === "change_role" ? bulkRoleValue : undefined,
+    });
   }
 
   function closeBulkDialog() {
@@ -391,6 +416,18 @@ export default function UserManagementSection() {
           password: bulkPassword,
         });
         setInfo(`ลบผู้ใช้งานสำเร็จ ${userIds.length} รายการ`);
+      } else if (bulkAction.type === "change_role") {
+        await axiosClient.patch("/users/bulk-role", {
+          user_ids: userIds,
+          role_name: bulkAction.role_name,
+          password: bulkPassword,
+        });
+        setInfo(
+          `เปลี่ยนสิทธิ์เป็น ${
+            bulkAction.role_name === "admin" ? "Admin" : "User"
+          } สำเร็จ ${userIds.length} รายการ`,
+        );
+        setTimeout(() => setInfo(""), 3000);
       } else {
         await axiosClient.patch("/users/bulk-status", {
           user_ids: userIds,
@@ -402,6 +439,7 @@ export default function UserManagementSection() {
             ? `เปิดใช้งานบัญชีสำเร็จ ${userIds.length} รายการ`
             : `ระงับการใช้งานบัญชีสำเร็จ ${userIds.length} รายการ`,
         );
+        setTimeout(() => setInfo(""), 3000);
       }
 
       setBulkAction(null);
@@ -587,7 +625,7 @@ export default function UserManagementSection() {
           <Typography
             sx={{
               fontSize: 20,
-              fontWeight: 500,
+              fontWeight: 400,
               color: text.head,
             }}
           >
@@ -607,7 +645,7 @@ export default function UserManagementSection() {
             height: 36,
             borderRadius: 50,
             textTransform: "none",
-            fontWeight: 600,
+            fontWeight: 400,
             px: 4,
             display: "flex",
             alignItems: "center",
@@ -658,7 +696,7 @@ export default function UserManagementSection() {
               px: 2,
               py: 1.5,
               borderRadius: `${radius + 2}px`,
-              borderColor: divider,
+              borderColor: card.color,
               bgcolor: background.paper,
             }}
           >
@@ -738,7 +776,7 @@ export default function UserManagementSection() {
               flex: 1,
               "& .MuiOutlinedInput-root": {
                 borderRadius: `${radius}px`,
-                bgcolor: background.default,
+                bgcolor: "#fff",
               },
             }}
             slotProps={{
@@ -773,7 +811,7 @@ export default function UserManagementSection() {
               label="สิทธิ์"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              sx={{ borderRadius: `${radius}px`, bgcolor: background.default }}
+              sx={{ borderRadius: `${radius}px`, bgcolor: "#fff" }}
             >
               <MenuItem value="all">ทั้งหมด</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
@@ -801,81 +839,186 @@ export default function UserManagementSection() {
           }}
         >
           <Typography
-            sx={{ fontSize: 14, fontWeight: 600, color: primary.main }}
+            sx={{ fontSize: 14, fontWeight: 400, color: primary.main }}
           >
             เลือกแล้ว {selectedCount} รายการ
           </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              size="small"
-              variant="outlined"
-              color="success"
-              startIcon={<CheckCircleRoundedIcon sx={{ fontSize: 16 }} />}
-              onClick={() => requestBulkAction("activate")}
+
+          <Stack
+            direction="row"
+            spacing={1.5}
+            flexWrap="wrap"
+            alignItems="center"
+            sx={{ rowGap: 1 }}
+          >
+            {/* ===== โซน 1: เปลี่ยนสิทธิ์ — segment แยกต่างหาก โทนสี secondary ===== */}
+            <Box
               sx={{
-                textTransform: "none",
-                fontWeight: 500,
-                borderRadius: `${radius}px`,
-                borderColor: "success.main",
-                "&:hover": {
-                  bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                pl: 1.25,
+                pr: 0.75,
+                py: 0.5,
+                borderRadius: 50,
+                bgcolor: alpha(
+                  theme.palette.secondary?.main || "#7c3aed",
+                  0.08,
+                ),
+                border: `1px solid ${alpha(
+                  theme.palette.secondary?.main || "#7c3aed",
+                  0.3,
+                )}`,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 12.5,
+                  color: theme.palette.secondary?.main || "#7c3aed",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                เปลี่ยนสิทธิ์เป็น
+              </Typography>
+
+              <Select
+                size="small"
+                value={bulkRoleValue}
+                onChange={(e) => setBulkRoleValue(e.target.value)}
+                variant="standard"
+                disableUnderline
+                IconComponent={KeyboardArrowDownRoundedIcon}
+                inputProps={{ "aria-label": "เปลี่ยนสิทธิ์เป็น" }}
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.palette.secondary?.main || "#7c3aed",
+                  "& .MuiSelect-select": { py: 0.25, pr: "22px !important" },
+                  "& .MuiSvgIcon-root": {
+                    color: theme.palette.secondary?.main || "#7c3aed",
+                  },
+                }}
+              >
+                <MenuItem value="user" sx={{ fontSize: 13 }}>
+                  User
+                </MenuItem>
+                <MenuItem value="admin" sx={{ fontSize: 13 }}>
+                  Admin
+                </MenuItem>
+              </Select>
+
+              <Button
+                size="small"
+                variant="contained"
+                disableElevation
+                disabled={bulkRoleAllSame}
+                onClick={() => requestBulkAction("change_role")}
+                sx={{
+                  ml: 0.5,
+                  minWidth: "auto",
+                  height: 26,
+                  px: 1.5,
+                  fontSize: 12,
+                  textTransform: "none",
+                  fontWeight: 400,
+                  borderRadius: 50,
+                  bgcolor: theme.palette.secondary?.main || "#7c3aed",
+                  "&:hover": {
+                    bgcolor: theme.palette.secondary?.dark || "#6d28d9",
+                  },
+                  "&.Mui-disabled": {
+                    bgcolor: alpha(
+                      theme.palette.secondary?.main || "#7c3aed",
+                      0.25,
+                    ),
+                    color: "#fff",
+                  },
+                }}
+              >
+                ยืนยัน
+              </Button>
+            </Box>
+
+            <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
+
+            {/* ===== โซน 2: action สถานะ/ลบ — กลุ่มเดิม ===== */}
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              sx={{ rowGap: 1 }}
+            >
+              <Button
+                size="small"
+                variant="outlined"
+                color="success"
+                startIcon={<CheckCircleRoundedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => requestBulkAction("activate")}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 400,
+                  borderRadius: `${radius}px`,
                   borderColor: "success.main",
-                },
-              }}
-            >
-              เปิดใช้งาน
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              color="warning"
-              startIcon={<BlockRoundedIcon sx={{ fontSize: 16 }} />}
-              onClick={() => requestBulkAction("deactivate")}
-              sx={{
-                textTransform: "none",
-                fontWeight: 500,
-                borderRadius: `${radius}px`,
-                borderColor: "warning.main",
-                "&:hover": {
-                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                  "&:hover": {
+                    bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
+                    borderColor: "success.main",
+                  },
+                }}
+              >
+                เปิดใช้งาน
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                startIcon={<BlockRoundedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => requestBulkAction("deactivate")}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 400,
+                  borderRadius: `${radius}px`,
                   borderColor: "warning.main",
-                },
-              }}
-            >
-              ระงับการใช้งาน
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteRoundedIcon sx={{ fontSize: 16 }} />}
-              onClick={() => requestBulkAction("delete")}
-              sx={{
-                textTransform: "none",
-                fontWeight: 500,
-                borderRadius: `${radius}px`,
-                borderColor: "error.main",
-                "&:hover": {
-                  bgcolor: (theme) => alpha(theme.palette.error.main, 0.08),
+                  "&:hover": {
+                    bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                    borderColor: "warning.main",
+                  },
+                }}
+              >
+                ระงับการใช้งาน
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteRoundedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => requestBulkAction("delete")}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 400,
+                  borderRadius: `${radius}px`,
                   borderColor: "error.main",
-                },
-              }}
-            >
-              ลบ
-            </Button>
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => setSelectedIds(new Set())}
-              sx={{
-                color: text.secondary,
-                textTransform: "none",
-                fontWeight: 500,
-                borderRadius: `${radius}px`,
-              }}
-            >
-              ยกเลิกการเลือก
-            </Button>
+                  "&:hover": {
+                    bgcolor: (theme) => alpha(theme.palette.error.main, 0.08),
+                    borderColor: "error.main",
+                  },
+                }}
+              >
+                ลบ
+              </Button>
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setSelectedIds(new Set())}
+                sx={{
+                  color: text.secondary,
+                  textTransform: "none",
+                  fontWeight: 400,
+                  borderRadius: `${radius}px`,
+                }}
+              >
+                ยกเลิกการเลือก
+              </Button>
+            </Stack>
           </Stack>
         </Box>
       </Fade>
@@ -937,7 +1080,7 @@ export default function UserManagementSection() {
               <TableRow
                 sx={{
                   "& th": {
-                    fontWeight: 600,
+                    fontWeight: 400,
                     fontSize: 13,
                     color: text.secondary,
                     bgcolor: background.default,
@@ -954,18 +1097,48 @@ export default function UserManagementSection() {
                     indeterminate={someSelected}
                     onChange={toggleSelectAll}
                     disabled={selectableIds.length === 0}
-                    sx={{ "&.Mui-disabled": { color: "#acacac" } }}
+                    sx={{
+                      "&.Mui-disabled": { color: "#acacac" },
+                    }}
                   />
                 </TableCell>
+
                 <TableCell sortDirection={orderBy === "email" ? order : false}>
                   <TableSortLabel
                     active={orderBy === "email"}
                     direction={orderBy === "email" ? order : "asc"}
                     onClick={() => handleSort("email")}
+                    IconComponent={UnfoldMoreRoundedIcon}
+                    sx={{
+                      "& .MuiTableSortLabel-icon": {
+                        fontSize: 18,
+                        opacity: 0.45,
+                        transition: "0.2s ease",
+                        transform: "none !important",
+                      },
+
+                      "&.Mui-active .MuiTableSortLabel-icon": {
+                        opacity: 1,
+                        color: "primary.main",
+                      },
+
+                      // sort asc = ลูกศรขึ้น
+                      "&.Mui-active[aria-sort='ascending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(180deg) !important",
+                        },
+
+                      // sort desc = ลูกศรลง
+                      "&.Mui-active[aria-sort='descending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(0deg) !important",
+                        },
+                    }}
                   >
                     ผู้ใช้งาน
                   </TableSortLabel>
                 </TableCell>
+
                 <TableCell
                   sortDirection={orderBy === "role_name" ? order : false}
                 >
@@ -973,19 +1146,73 @@ export default function UserManagementSection() {
                     active={orderBy === "role_name"}
                     direction={orderBy === "role_name" ? order : "asc"}
                     onClick={() => handleSort("role_name")}
+                    IconComponent={UnfoldMoreRoundedIcon}
+                    sx={{
+                      "& .MuiTableSortLabel-icon": {
+                        fontSize: 18,
+                        opacity: 0.45,
+                        transition: "0.2s ease",
+                        transform: "none !important",
+                      },
+
+                      "&.Mui-active .MuiTableSortLabel-icon": {
+                        opacity: 1,
+                        color: "primary.main",
+                      },
+
+                      // sort asc = ลูกศรขึ้น
+                      "&.Mui-active[aria-sort='ascending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(180deg) !important",
+                        },
+
+                      // sort desc = ลูกศรลง
+                      "&.Mui-active[aria-sort='descending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(0deg) !important",
+                        },
+                    }}
                   >
                     สิทธิ์
                   </TableSortLabel>
                 </TableCell>
+
                 <TableCell sortDirection={orderBy === "status" ? order : false}>
                   <TableSortLabel
                     active={orderBy === "status"}
                     direction={orderBy === "status" ? order : "asc"}
                     onClick={() => handleSort("status")}
+                    IconComponent={UnfoldMoreRoundedIcon}
+                    sx={{
+                      "& .MuiTableSortLabel-icon": {
+                        fontSize: 18,
+                        opacity: 0.45,
+                        transition: "0.2s ease",
+                        transform: "none !important",
+                      },
+
+                      "&.Mui-active .MuiTableSortLabel-icon": {
+                        opacity: 1,
+                        color: "primary.main",
+                      },
+
+                      // sort asc = ลูกศรขึ้น
+                      "&.Mui-active[aria-sort='ascending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(180deg) !important",
+                        },
+
+                      // sort desc = ลูกศรลง
+                      "&.Mui-active[aria-sort='descending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(0deg) !important",
+                        },
+                    }}
                   >
                     สถานะ
                   </TableSortLabel>
                 </TableCell>
+
                 <TableCell
                   sortDirection={orderBy === "last_login_at" ? order : false}
                 >
@@ -993,10 +1220,37 @@ export default function UserManagementSection() {
                     active={orderBy === "last_login_at"}
                     direction={orderBy === "last_login_at" ? order : "asc"}
                     onClick={() => handleSort("last_login_at")}
+                    IconComponent={UnfoldMoreRoundedIcon}
+                    sx={{
+                      "& .MuiTableSortLabel-icon": {
+                        fontSize: 18,
+                        opacity: 0.45,
+                        transition: "0.2s ease",
+                        transform: "none !important",
+                      },
+
+                      "&.Mui-active .MuiTableSortLabel-icon": {
+                        opacity: 1,
+                        color: "primary.main",
+                      },
+
+                      // sort asc = ลูกศรขึ้น
+                      "&.Mui-active[aria-sort='ascending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(180deg) !important",
+                        },
+
+                      // sort desc = ลูกศรลง
+                      "&.Mui-active[aria-sort='descending'] .MuiTableSortLabel-icon":
+                        {
+                          transform: "rotate(0deg) !important",
+                        },
+                    }}
                   >
                     เข้าใช้งานล่าสุด
                   </TableSortLabel>
                 </TableCell>
+
                 <TableCell align="left">การจัดการ</TableCell>
               </TableRow>
             </TableHead>
@@ -1005,6 +1259,9 @@ export default function UserManagementSection() {
               {!loading &&
                 displayedUsers.map((u) => {
                   const isSelf = u.user_id === currentUser?.user_id;
+                  // ล็อกไม่ให้ทำ action รายแถว (สถานะ/ลบ) เมื่อกำลังเลือกหลายแถวอยู่
+                  // เพื่อบังคับให้ใช้แถบดำเนินการพร้อมกันด้านบนแทน (UX ที่ชัดเจนไม่กำกวม)
+                  const isRowActionLocked = isSelf || selectedCount > 0;
                   return (
                     <TableRow
                       key={u.user_id}
@@ -1044,11 +1301,12 @@ export default function UserManagementSection() {
                     >
                       <TableCell padding="checkbox">
                         <Tooltip
-                          title={
-                            isSelf
-                              ? "ไม่สามารถเลือกบัญชีของตัวเองเพื่อดำเนินการพร้อมกันได้"
-                              : ""
-                          }
+                          placement="top"
+                          // title={
+                          //   isSelf
+                          //     ? "ไม่สามารถเลือกบัญชีของตัวเองเพื่อดำเนินการพร้อมกันได้"
+                          //     : ""
+                          // }
                           arrow
                           disableHoverListener={!isSelf}
                         >
@@ -1078,17 +1336,22 @@ export default function UserManagementSection() {
                           >
                             {u.full_name || "-"}
                             {isSelf && (
-                              <Box
-                                component="span"
+                              <Chip
+                                label="คุณ"
+                                size="small"
+                                color="primary"
+                                variant="outlined"
                                 sx={{
                                   ml: 0.75,
+                                  height: 20,
                                   fontSize: 11,
-                                  fontWeight: 600,
-                                  color: primary.main,
+                                  fontWeight: 400,
+                                  borderRadius: 999,
+                                  "& .MuiChip-label": {
+                                    px: 1,
+                                  },
                                 }}
-                              >
-                                (คุณ)
-                              </Box>
+                              />
                             )}
                           </Typography>
                           <Typography
@@ -1107,25 +1370,26 @@ export default function UserManagementSection() {
 
                       <TableCell>
                         <Tooltip
+                          placement="top"
                           title={
-                            isSelf
-                              ? "ไม่สามารถเปลี่ยนสิทธิ์ของตัวเองได้ ให้ผู้ดูแลระบบท่านอื่นเปลี่ยนให้"
-                              : ""
+                            selectedCount > 0
+                              ? BULK_MODE_LOCK_HINT
+                              : isSelf
+                                ? ""
+                                : ""
                           }
                           arrow
-                          disableHoverListener={!isSelf}
+                          disableHoverListener={!isRowActionLocked}
                         >
                           {/* span ครอบไว้เพื่อให้ Tooltip แสดงได้แม้ Select จะถูก disabled */}
                           <span>
                             <FormControl
                               size="small"
                               sx={{ minWidth: 110 }}
-                              disabled={isSelf}
+                              disabled={isRowActionLocked}
                             >
                               <Select
-                                inputProps={{
-                                  "aria-label": "สิทธิ์ผู้ใช้งาน",
-                                }}
+                                inputProps={{ "aria-label": "สิทธิ์ผู้ใช้งาน" }}
                                 value={u.role_name}
                                 onChange={(e) =>
                                   handleChangeRole(u.user_id, e.target.value)
@@ -1163,19 +1427,22 @@ export default function UserManagementSection() {
                             sx={{
                               cursor: "pointer",
                               fontSize: 11.5,
-                              fontWeight: 600,
+                              fontWeight: 400,
                               borderRadius: `${radius}px`,
                             }}
                           />
                         ) : (
                           <Tooltip
+                            placement="top"
                             title={
-                              isSelf
-                                ? "ไม่สามารถระงับการใช้งานบัญชีของตัวเองได้"
-                                : ""
+                              selectedCount > 0
+                                ? BULK_MODE_LOCK_HINT
+                                : isSelf
+                                  ? ""
+                                  : ""
                             }
                             arrow
-                            disableHoverListener={!isSelf}
+                            disableHoverListener={!isRowActionLocked}
                           >
                             <span>
                               <Chip
@@ -1195,11 +1462,13 @@ export default function UserManagementSection() {
                                 color={u.is_active ? "success" : "default"}
                                 variant={u.is_active ? "outlined" : "filled"}
                                 onClick={() => requestToggleStatus(u)}
-                                disabled={isSelf}
+                                disabled={isRowActionLocked}
                                 sx={{
-                                  cursor: isSelf ? "not-allowed" : "pointer",
+                                  cursor: isRowActionLocked
+                                    ? "not-allowed"
+                                    : "pointer",
                                   fontSize: 11.5,
-                                  fontWeight: 600,
+                                  fontWeight: 400,
                                   borderRadius: `${radius}px`,
                                   "&.Mui-disabled": {
                                     opacity: 1,
@@ -1220,79 +1489,151 @@ export default function UserManagementSection() {
                           : "-"}
                       </TableCell>
 
-                      <TableCell align="right">
+                      <TableCell align="left">
                         <Stack
                           direction="row"
-                          spacing={0.25}
-                          sx={{ flexWrap: "nowrap" }}
+                          spacing={0.5}
+                          justifyContent="flex-start"
+                          sx={{
+                            p: 0.5,
+                            // ml: "auto",
+                            width: "fit-content",
+                            borderRadius: 2.5,
+                            bgcolor: alpha(theme.palette.grey[500], 0.04),
+                            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+                          }}
                         >
                           {!u.is_approved && (
-                            <Tooltip title="อนุมัติผู้ใช้งาน" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => requestApprove(u)}
-                                sx={{
-                                  "&:hover": {
-                                    bgcolor: alpha(
-                                      theme.palette.success.main,
-                                      0.1,
-                                    ),
-                                  },
-                                }}
-                              >
-                                <HowToRegRoundedIcon
-                                  sx={{ fontSize: 18, color: "success.main" }}
-                                />
-                              </IconButton>
-                            </Tooltip>
+                            <>
+                              <Tooltip title="อนุมัติผู้ใช้งาน" arrow>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => requestApprove(u)}
+                                  sx={{
+                                    width: 34,
+                                    height: 34,
+                                    borderRadius: 2,
+                                    color: "text.secondary",
+                                    transition: "all .18s ease",
+                                    "& svg": {
+                                      fontSize: 17,
+                                    },
+                                    "&:hover": {
+                                      color: "success.main",
+                                      bgcolor: alpha(
+                                        theme.palette.success.main,
+                                        0.1,
+                                      ),
+                                      transform: "translateY(-1px)",
+                                      boxShadow: 1,
+                                    },
+                                  }}
+                                >
+                                  <HowToRegRoundedIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              <Divider orientation="vertical" flexItem />
+                            </>
                           )}
-                          <Tooltip title="ตั้งรหัสผ่านใหม่" arrow>
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setResetTarget(u);
-                                setResetPasswordValue("");
-                              }}
-                              sx={{
-                                "&:hover": {
-                                  bgcolor: alpha(primary.main, 0.1),
-                                },
-                              }}
-                            >
-                              <LockResetRoundedIcon
-                                sx={{ fontSize: 18, color: primary.main }}
-                              />
-                            </IconButton>
-                          </Tooltip>
+
                           <Tooltip
+                            placement="left"
                             title={
-                              isSelf
-                                ? "ไม่สามารถลบบัญชีของตัวเองได้"
-                                : "ลบผู้ใช้งาน"
+                              isRowActionLocked
+                                ? selectedCount > 0
+                                  ? BULK_MODE_LOCK_HINT
+                                  : "ไม่สามารถตั้งรหัสผ่านใหม่ให้บัญชีของตัวเองผ่านช่องทางนี้ได้"
+                                : "ตั้งรหัสผ่านใหม่"
                             }
-                            arrow
+                            slotProps={{
+                              tooltip: {
+                                sx: {
+                                  bgcolor: theme.palette.primary.main,
+                                  borderRadius: 50,
+                                  fontWeight: 400,
+                                },
+                              },
+                            }}
                           >
+                            {/* span ครอบไว้เพื่อให้ Tooltip แสดงได้แม้ IconButton จะถูก disabled */}
                             <span>
                               <IconButton
                                 size="small"
-                                onClick={() => requestDelete(u)}
-                                disabled={isSelf}
+                                disabled={isRowActionLocked}
+                                onClick={() => {
+                                  setResetTarget(u);
+                                  setResetPasswordValue("");
+                                }}
                                 sx={{
-                                  "&:hover": {
-                                    bgcolor: alpha(
-                                      theme.palette.error.main,
-                                      0.1,
-                                    ),
-                                  },
+                                  width: 34,
+                                  height: 34,
+                                  borderRadius: 2,
+                                  color: "text.secondary",
+                                  transition: "all .18s ease",
+                                  "& svg": { fontSize: 17 },
+                                  "&.Mui-disabled": { color: "#acacac" },
+                                  "&:hover": isRowActionLocked
+                                    ? {}
+                                    : {
+                                        color: "primary.main",
+                                        bgcolor: (theme) =>
+                                          alpha(
+                                            theme.palette.primary.main,
+                                            0.1,
+                                          ),
+                                        transform: "translateY(-1px)",
+                                        boxShadow: 1,
+                                      },
                                 }}
                               >
-                                <DeleteRoundedIcon
-                                  sx={{
-                                    fontSize: 18,
-                                    color: isSelf ? "#acacac" : "error.main",
-                                  }}
-                                />
+                                <LockResetRoundedIcon />
                               </IconButton>
+                            </span>
+                          </Tooltip>
+
+                          <Tooltip
+                            placement="top"
+                            title={selectedCount > 0 ? BULK_MODE_LOCK_HINT : ""}
+                            arrow
+                            disableHoverListener={!isRowActionLocked}
+                          >
+                            <span>
+                              <Button
+                                size="small"
+                                variant="text"
+                                startIcon={
+                                  <DeleteRoundedIcon sx={{ fontSize: 17 }} />
+                                }
+                                onClick={() => requestDelete(u)}
+                                disabled={isRowActionLocked}
+                                sx={{
+                                  minWidth: "auto",
+                                  px: 1.2,
+                                  py: 0.6,
+                                  borderRadius: 2,
+                                  textTransform: "none",
+                                  fontWeight: 400,
+                                  fontSize: 13,
+                                  color: isRowActionLocked
+                                    ? "action.disabled"
+                                    : "error.main",
+                                  transition: "all .18s ease",
+                                  "&:hover": !isRowActionLocked
+                                    ? {
+                                        color: "error.main",
+                                        bgcolor: alpha(
+                                          theme.palette.error.main,
+                                          0.1,
+                                        ),
+                                        transform: "translateY(-1px)",
+                                        boxShadow: 1,
+                                      }
+                                    : {},
+                                }}
+                              >
+                                ลบผู้ใช้งาน
+                              </Button>
                             </span>
                           </Tooltip>
                         </Stack>
@@ -1517,7 +1858,7 @@ export default function UserManagementSection() {
               disabled={!isCreatePasswordValid || !createPasswordsMatch}
               sx={{
                 textTransform: "none",
-                fontWeight: 600,
+                fontWeight: 400,
                 borderRadius: `${radius}px`,
               }}
             >
@@ -1598,7 +1939,7 @@ export default function UserManagementSection() {
               disabled={!isResetPasswordValid}
               sx={{
                 textTransform: "none",
-                fontWeight: 600,
+                fontWeight: 400,
                 borderRadius: `${radius}px`,
               }}
             >
@@ -1635,7 +1976,7 @@ export default function UserManagementSection() {
             ต้องการลบผู้ใช้งาน <strong>{deleteTarget?.email}</strong>{" "}
             ใช่หรือไม่?
             <br />
-            การลบไม่สามารถย้อนกลับได้ ข้อมูลบัญชีนี้จะหายไปถาวร
+            การลบไม่สามารถย้อนกลับได้ บัญชีนี้จะหายไปถาวร
           </>
         }
         confirmLabel="ลบผู้ใช้งาน"
@@ -1712,6 +2053,15 @@ export default function UserManagementSection() {
             ))}
           </Box>
 
+          {bulkAction?.type === "change_role" && (
+            <Alert severity="info" sx={{ mb: 2, borderRadius: `${radius}px` }}>
+              จะเปลี่ยนสิทธิ์เป็น{" "}
+              <strong>
+                {bulkAction.role_name === "admin" ? "Admin" : "User"}
+              </strong>
+            </Alert>
+          )}
+
           {bulkAction?.type === "delete" && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: `${radius}px` }}>
               การลบไม่สามารถย้อนกลับได้ ข้อมูลบัญชีเหล่านี้จะหายไปถาวรทั้งหมด
@@ -1783,8 +2133,9 @@ export default function UserManagementSection() {
             disabled={bulkProcessing || !bulkPassword}
             sx={{
               textTransform: "none",
-              fontWeight: 600,
+              fontWeight: 400,
               borderRadius: `${radius}px`,
+              color: "#fff"
             }}
           >
             {bulkProcessing

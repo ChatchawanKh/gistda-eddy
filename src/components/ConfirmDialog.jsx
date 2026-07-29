@@ -81,13 +81,7 @@ export default function ConfirmDialog({
         },
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          height: 4,
-          bgcolor: color,
-        }}
-      />
+      
 
       <DialogTitle
         sx={{
