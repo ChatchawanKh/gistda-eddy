@@ -1,42 +1,51 @@
 // src/pages/Auth/Login.jsx
-import { useState } from 'react';
-import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Alert from '@mui/material/Alert';
-import Link from '@mui/material/Link';
-import Stack from '@mui/material/Stack';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
+import { useState } from "react";
+import { useNavigate, useLocation, Link as RouterLink } from "react-router-dom";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
 
-import { useAuth } from '../../context/AuthContext';
-import AuthLayout from './AuthLayout';
+import InputAdornment from "@mui/material/InputAdornment";
+import IconButton from "@mui/material/IconButton";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+
+import { useAuth } from "../../context/AuthContext";
+import AuthLayout from "./AuthLayout";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = location.state?.from?.pathname || '/';
-  const infoMessage = location.state?.message || '';
+  const redirectTo = location.state?.from?.pathname || "/";
+  const infoMessage = location.state?.message || "";
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
+    setError("");
     setSubmitting(true);
     try {
       await login(email, password, rememberMe);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่');
+      setError(
+        err.response?.data?.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -61,14 +70,40 @@ export default function Login() {
 
           <TextField
             label="รหัสผ่าน"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             fullWidth
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      edge="end"
+                    >
+                      {showPassword ? (
+                        <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                      ) : (
+                        <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <FormControlLabel
               control={
                 <Checkbox
@@ -77,22 +112,30 @@ export default function Login() {
                   size="small"
                 />
               }
-              label={<Typography variant="body2">จดจำการเข้าสู่ระบบ</Typography>}
+              label={
+                <Typography variant="body2">จดจำการเข้าสู่ระบบ</Typography>
+              }
             />
             <Link component={RouterLink} to="/forgot-password" variant="body2">
               ลืมรหัสผ่าน?
             </Link>
           </Box>
 
-          <Button type="submit" variant="contained" size="large" fullWidth disabled={submitting}>
-            {submitting ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            fullWidth
+            disabled={submitting}
+          >
+            {submitting ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </Button>
 
           <Divider sx={{ my: 0.5 }} />
 
-          <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{ textAlign: "center" }}>
             <Typography variant="body2" color="text.secondary" component="span">
-              ยังไม่มีบัญชี?{' '}
+              ยังไม่มีบัญชี?{" "}
             </Typography>
             <Link component={RouterLink} to="/register" variant="body2">
               สมัครสมาชิก

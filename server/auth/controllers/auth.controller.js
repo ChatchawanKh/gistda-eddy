@@ -22,9 +22,16 @@ export async function register(req, res) {
   if (!email || !password) {
     return res.status(400).json({ message: 'กรุณากรอกอีเมลและรหัสผ่าน' });
   }
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' });
+
+  // ตรวจสอบ policy รหัสผ่านแบบเต็ม (ความยาว 10-15, ตัวพิมพ์ใหญ่/เล็ก, ตัวเลข, อักขระพิเศษ, ไม่ผูกกับอีเมล ฯลฯ)
+  const passwordErrors = validatePassword(password, email);
+  if (passwordErrors.length > 0) {
+    return res.status(400).json({
+      message: passwordErrors.join(', '),
+      errors: passwordErrors,
+    });
   }
+
   if (!isAllowedEmail(email)) {
     return res.status(400).json({
       message: `ระบบอนุญาตเฉพาะอีเมลโดเมน @${process.env.ALLOWED_EMAIL_DOMAIN} เท่านั้น`,
@@ -280,17 +287,17 @@ export async function resetPassword(req, res) {
   if (!token || !newPassword) {
     return res.status(400).json({ message: 'ข้อมูลไม่ครบถ้วน' });
   }
-  if (newPassword.length < 8) {
-    return res.status(400).json({ message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' });
-  }
 
   const client = await pool.connect();
   try {
     const tokenHash = hashResetToken(token);
 
+    // join กับ users เพื่อดึง email เจ้าของ token มาเช็ค policy รหัสผ่าน (ห้ามผูกกับ email)
     const tokenResult = await client.query(
-      `SELECT * FROM password_reset_tokens
-       WHERE token_hash = $1 AND used = FALSE AND expires_at > NOW()`,
+      `SELECT prt.*, u.email AS user_email
+       FROM password_reset_tokens prt
+       JOIN users u ON u.user_id = prt.user_id
+       WHERE prt.token_hash = $1 AND prt.used = FALSE AND prt.expires_at > NOW()`,
       [tokenHash]
     );
 
@@ -299,6 +306,15 @@ export async function resetPassword(req, res) {
     }
 
     const resetRecord = tokenResult.rows[0];
+
+    const passwordErrors = validatePassword(newPassword, resetRecord.user_email);
+    if (passwordErrors.length > 0) {
+      return res.status(400).json({
+        message: passwordErrors.join(', '),
+        errors: passwordErrors,
+      });
+    }
+
     const passwordHash = await hashPassword(newPassword);
 
     await client.query('BEGIN');
@@ -366,21 +382,29 @@ export async function changePassword(req, res) {
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
   }
-  if (newPassword.length < 8) {
-    return res.status(400).json({ message: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร' });
-  }
 
   try {
-    const userResult = await pool.query('SELECT password_hash FROM users WHERE user_id = $1', [
-      req.user.user_id,
-    ]);
+    const userResult = await pool.query(
+      'SELECT email, password_hash FROM users WHERE user_id = $1',
+      [req.user.user_id]
+    );
     if (userResult.rows.length === 0) {
       return res.status(404).json({ message: 'ไม่พบผู้ใช้งาน' });
     }
 
-    const isMatch = await comparePassword(currentPassword, userResult.rows[0].password_hash);
+    const { email: userEmail, password_hash: currentHash } = userResult.rows[0];
+
+    const isMatch = await comparePassword(currentPassword, currentHash);
     if (!isMatch) {
       return res.status(401).json({ message: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' });
+    }
+
+    const passwordErrors = validatePassword(newPassword, userEmail);
+    if (passwordErrors.length > 0) {
+      return res.status(400).json({
+        message: passwordErrors.join(', '),
+        errors: passwordErrors,
+      });
     }
 
     const newHash = await hashPassword(newPassword);

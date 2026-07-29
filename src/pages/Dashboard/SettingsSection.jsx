@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
@@ -14,9 +14,76 @@ import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
+
+import InputAdornment from "@mui/material/InputAdornment";
+import IconButton from "@mui/material/IconButton";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import { useAuth } from "../../context/AuthContext";
 import axiosClient from "../../api/axiosClient";
+// หมายเหตุ: ใช้ util ฝั่ง client (src/utils/validatePassword.js) ไม่ใช่ import จาก server —
+// โค้ด server ไม่ควรถูกดึงเข้ามาอยู่ใน frontend bundle
+import { validatePassword } from "../../../server/auth/utils/validatePassword";
+
+// เงื่อนไขรหัสผ่านที่โชว์เป็น checklist สด ๆ ระหว่างพิมพ์ (ไม่รวมกฎ blacklist/ผูกกับอีเมล
+// เพราะเป็น edge case ที่ค่อยแจ้งผ่าน error message ตอน submit แทน จะได้ไม่ดู noisy เกินไป)
+const PASSWORD_RULES = [
+  {
+    key: "length",
+    label: "มากกว่า 10 ตัวอักษร",
+    test: (v) => v.length >= 10 ,
+  },
+  { key: "upper", label: "มีตัวพิมพ์ใหญ่ (A-Z)", test: (v) => /[A-Z]/.test(v) },
+  { key: "lower", label: "มีตัวพิมพ์เล็ก (a-z)", test: (v) => /[a-z]/.test(v) },
+  { key: "digit", label: "มีตัวเลข (0-9)", test: (v) => /[0-9]/.test(v) },
+  {
+    key: "special",
+    label: "มีอักขระพิเศษ (เช่น ! @ # $)",
+    test: (v) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(v),
+  },
+];
+
+function PasswordChecklist({ password }) {
+  const theme = useTheme();
+  return (
+    <Stack spacing={0.5} sx={{ pl: 0.5 }}>
+      {PASSWORD_RULES.map((rule) => {
+        const passed = rule.test(password);
+        return (
+          <Box
+            key={rule.key}
+            sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+          >
+            {passed ? (
+              <CheckCircleRoundedIcon
+                sx={{ fontSize: 16, color: theme.palette.success.main }}
+              />
+            ) : (
+              <RadioButtonUncheckedRoundedIcon
+                sx={{
+                  fontSize: 16,
+                  color: theme.palette.text.secondary,
+                  opacity: 0.5,
+                }}
+              />
+            )}
+            <Typography
+              variant="caption"
+              sx={{
+                color: passed ? theme.palette.success.main : "text.secondary",
+              }}
+            >
+              {rule.label}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
 
 export default function SettingsSection() {
   const theme = useTheme();
@@ -24,12 +91,16 @@ export default function SettingsSection() {
   const { user, isAdmin, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
 
+  // ---- toggle แสดง/ซ่อนรหัสผ่าน ----
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   // ---- ข้อมูลส่วนตัว ----
   const [fullName, setFullName] = useState(user?.full_name || "");
   const originalFullName = user?.full_name || "";
 
-  const isProfileUnchanged =
-    fullName.trim() === originalFullName.trim();
+  const isProfileUnchanged = fullName.trim() === originalFullName.trim();
 
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
@@ -41,12 +112,19 @@ export default function SettingsSection() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
-  const isPasswordInvalid =
-    !currentPassword ||
-    !newPassword ||
-    !confirmPassword ||
-    newPassword !== confirmPassword;
 
+  // เช็ค policy เต็มรูปแบบ (รวมกฎห้ามพ้องกับอีเมลของ user คนนี้)
+  const newPasswordErrors = useMemo(
+    () => validatePassword(newPassword, user?.email),
+    [newPassword, user?.email],
+  );
+  const isNewPasswordValid =
+    newPassword.length > 0 && newPasswordErrors.length === 0;
+  const passwordsMatch =
+    confirmPassword.length > 0 && newPassword === confirmPassword;
+
+  const isPasswordInvalid =
+    !currentPassword || !isNewPasswordValid || !passwordsMatch;
 
   const initials =
     (user?.full_name || user?.email || "U")
@@ -69,7 +147,6 @@ export default function SettingsSection() {
       setTimeout(() => {
         setProfileSuccess("");
       }, 3000);
-
     } catch (err) {
       setProfileError(err.response?.data?.message || "บันทึกข้อมูลไม่สำเร็จ");
     } finally {
@@ -81,8 +158,8 @@ export default function SettingsSection() {
     e.preventDefault();
     setPasswordError("");
 
-    if (newPassword.length < 8) {
-      setPasswordError("รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร");
+    if (!isNewPasswordValid) {
+      setPasswordError(newPasswordErrors[0] || "รหัสผ่านใหม่ไม่ตรงตามเงื่อนไข");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -98,6 +175,9 @@ export default function SettingsSection() {
       });
       // เปลี่ยนรหัสผ่านสำเร็จ -> server เพิกถอน session เดิมทั้งหมดแล้ว บังคับให้ login ใหม่
       await logout();
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
       navigate("/login", {
         replace: true,
         state: {
@@ -142,7 +222,7 @@ export default function SettingsSection() {
               {initials}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{fontSize: 15 }} noWrap>
+              <Typography sx={{ fontSize: 15 }} noWrap>
                 {user?.email}
               </Typography>
               <Chip
@@ -192,7 +272,6 @@ export default function SettingsSection() {
                   {savingProfile ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
                 </Button>
               </Box>
-
             </Stack>
           </Box>
         </CardContent>
@@ -215,29 +294,102 @@ export default function SettingsSection() {
 
               <TextField
                 label="รหัสผ่านปัจจุบัน"
-                type="password"
+                type={showCurrentPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
                 fullWidth
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          tabIndex={-1}
+                          onClick={() => setShowCurrentPassword((v) => !v)}
+                          edge="end"
+                        >
+                          {showCurrentPassword ? (
+                            <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                          ) : (
+                            <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
-              <TextField
-                label="รหัสผ่านใหม่"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                fullWidth
-                slotProps={{ htmlInput: { minLength: 8 } }}
-                helperText="อย่างน้อย 8 ตัวอักษร"
-              />
+
+              <Box>
+                <TextField
+                  label="รหัสผ่านใหม่"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  fullWidth
+                  slotProps={{
+                    htmlInput: { minLength: 10 },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            tabIndex={-1}
+                            onClick={() => setShowNewPassword((v) => !v)}
+                            edge="end"
+                          >
+                            {showNewPassword ? (
+                              <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <Box sx={{ mt: 1 }}>
+                  <PasswordChecklist password={newPassword} />
+                </Box>
+              </Box>
+
               <TextField
                 label="ยืนยันรหัสผ่านใหม่"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 fullWidth
+                slotProps={{
+                  htmlInput: { minLength: 10 },
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          tabIndex={-1}
+                          onClick={() => setShowConfirmPassword((v) => !v)}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? (
+                            <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                          ) : (
+                            <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+                error={confirmPassword.length > 0 && !passwordsMatch}
+                helperText={
+                  confirmPassword.length > 0 && !passwordsMatch
+                    ? "รหัสผ่านไม่ตรงกัน"
+                    : " "
+                }
               />
 
               <Box>
@@ -254,7 +406,6 @@ export default function SettingsSection() {
           </Box>
         </CardContent>
       </Card>
-
     </Box>
   );
 }

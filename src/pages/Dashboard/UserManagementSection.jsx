@@ -30,20 +30,29 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Alert from "@mui/material/Alert";
 import Stack from "@mui/material/Stack";
+import Paper from "@mui/material/Paper";
+import Fade from "@mui/material/Fade";
 
 import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import LockResetRoundedIcon from "@mui/icons-material/LockResetRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import HourglassTopRoundedIcon from "@mui/icons-material/HourglassTopRounded";
 import HowToRegRoundedIcon from "@mui/icons-material/HowToRegRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 
 import axiosClient from "../../api/axiosClient";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
+// util ฝั่ง client เดียวกับที่ใช้ในหน้า Register / ResetPassword / SettingsSection
+import { validatePassword } from "../../../server/auth/utils/validatePassword";
 
 const emptyForm = {
   email: "",
@@ -81,16 +90,127 @@ const BULK_ACTION_LABELS = {
   },
 };
 
+// เงื่อนไขรหัสผ่านที่โชว์เป็น checklist สด ๆ ระหว่างพิมพ์ (ใช้ร่วมกันทั้ง dialog เพิ่มผู้ใช้งาน
+// และ dialog ตั้งรหัสผ่านใหม่ — ไม่รวมกฎ blacklist/ผูกกับอีเมล เพราะแจ้งผ่าน error message ตอน submit แทน)
+const PASSWORD_RULES = [
+  {
+    key: "length",
+    label: "มากกว่า 10 ตัวอักษร",
+    test: (v) => v.length >= 10,
+  },
+  { key: "upper", label: "มีตัวพิมพ์ใหญ่ (A-Z)", test: (v) => /[A-Z]/.test(v) },
+  { key: "lower", label: "มีตัวพิมพ์เล็ก (a-z)", test: (v) => /[a-z]/.test(v) },
+  { key: "digit", label: "มีตัวเลข (0-9)", test: (v) => /[0-9]/.test(v) },
+  {
+    key: "special",
+    label: "มีอักขระพิเศษ (เช่น ! @ # $)",
+    test: (v) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(v),
+  },
+];
+
+// ---- Helper: ผสมสีให้ได้ผลลัพธ์ทึบแสง 100% (ไม่ใช้ alpha) ----
+// ใช้เฉพาะกับพื้นหลังของคอลัมน์ sticky (checkbox ซ้าย / การจัดการ ขวา) เท่านั้น
+// เพราะพื้นหลังแบบโปร่งแสง (alpha) จะโดนเนื้อหาของแถวอื่นที่เลื่อนอยู่ด้านล่าง
+// ทะลุขึ้นมาซ้อนทับตัวหนังสือตอน scroll แนวนอน — ต้องผสมเป็นสีทึบไว้ล่วงหน้าแทน
+function parseColorToRgb(input) {
+  if (!input) return [255, 255, 255];
+  const value = String(input).trim();
+  if (value.startsWith("#")) {
+    let hex = value.slice(1);
+    if (hex.length === 3) {
+      hex = hex
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    }
+    const num = parseInt(hex, 16);
+    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+  }
+  const match = value.match(/rgba?\(([^)]+)\)/i);
+  if (match) {
+    const parts = match[1].split(",").map((v) => parseFloat(v.trim()));
+    return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+  }
+  return [255, 255, 255];
+}
+
+function mixOpaqueColor(tintColor, baseColor, ratio) {
+  const [tr, tg, tb] = parseColorToRgb(tintColor);
+  const [br, bg, bb] = parseColorToRgb(baseColor);
+  const mix = (a, b) => Math.round(a * ratio + b * (1 - ratio));
+  return `rgb(${mix(tr, br)}, ${mix(tg, bg)}, ${mix(tb, bb)})`;
+}
+
+function PasswordChecklist({ password }) {
+  const theme = useTheme();
+
+  return (
+    <Stack spacing={0.5} sx={{ pl: 0.5 }}>
+      {PASSWORD_RULES.map((rule) => {
+        const passed = rule.test(password);
+        return (
+          <Box
+            key={rule.key}
+            sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+          >
+            {passed ? (
+              <CheckCircleRoundedIcon
+                sx={{ fontSize: 16, color: theme.palette.success.main }}
+              />
+            ) : (
+              <RadioButtonUncheckedRoundedIcon
+                sx={{
+                  fontSize: 16,
+                  color: theme.palette.text.secondary,
+                  opacity: 0.5,
+                }}
+              />
+            )}
+            <Typography
+              variant="caption"
+              sx={{
+                color: passed ? theme.palette.success.main : "text.secondary",
+              }}
+            >
+              {rule.label}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
+
 export default function UserManagementSection() {
   const theme = useTheme();
   const { primary, divider, text, background } = theme.palette;
   const radius = theme.shape.borderRadius;
   const { user: currentUser } = useAuth(); // admin ที่กำลัง login อยู่ตอนนี้
 
+  // สีทึบแสงสำหรับพื้นหลังคอลัมน์ sticky (checkbox ซ้าย / การจัดการ ขวา) ในแต่ละสถานะของแถว
+  // คำนวณล่วงหน้าครั้งเดียวต่อการ render เพื่อไม่ให้พื้นหลังโปร่งแสงทำให้ตัวหนังสือ
+  // ของคอลัมน์อื่นที่เลื่อนอยู่ด้านล่างทะลุขึ้นมาซ้อนทับ
+  const stickyColors = React.useMemo(() => {
+    const base = background.paper;
+    return {
+      normal: base,
+      normalHover: mixOpaqueColor(text.primary, base, 0.045),
+      self: mixOpaqueColor(primary.main, base, 0.055),
+      selfHover: mixOpaqueColor(primary.main, base, 0.09),
+      selected: mixOpaqueColor(primary.main, base, 0.11),
+      selectedHover: mixOpaqueColor(primary.main, base, 0.16),
+    };
+  }, [background.paper, primary.main, text.primary]);
+
   const [users, setUsers] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
   const [info, setInfo] = React.useState("");
+
+  const [showCreatePassword, setShowCreatePassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [showResetPassword, setShowResetPassword] = React.useState(false);
+  const [showBulkPassword, setShowBulkPassword] = React.useState(false);
 
   // --- ค้นหา + เรียงลำดับ ---
   const [searchText, setSearchText] = React.useState("");
@@ -119,6 +239,25 @@ export default function UserManagementSection() {
   const [bulkPassword, setBulkPassword] = React.useState("");
   const [bulkError, setBulkError] = React.useState("");
   const [bulkProcessing, setBulkProcessing] = React.useState(false);
+
+  // เช็ค policy รหัสผ่านของฟอร์ม "เพิ่มผู้ใช้งานใหม่" (ผูกกับอีเมลที่กำลังกรอกในฟอร์มเดียวกัน)
+  const createPasswordErrors = React.useMemo(
+    () => validatePassword(form.password, form.email),
+    [form.password, form.email],
+  );
+  const isCreatePasswordValid =
+    form.password.length > 0 && createPasswordErrors.length === 0;
+  const createPasswordsMatch =
+    form.confirmPassword.length > 0 && form.password === form.confirmPassword;
+
+  // เช็ค policy รหัสผ่านของ dialog "ตั้งรหัสผ่านใหม่" (ผูกกับอีเมลของ user เป้าหมาย)
+  const resetPasswordErrors = React.useMemo(
+    () => validatePassword(resetPasswordValue, resetTarget?.email),
+    [resetPasswordValue, resetTarget?.email],
+  );
+
+  const isResetPasswordValid =
+    resetPasswordValue.length > 0 && resetPasswordErrors.length === 0;
 
   async function fetchUsers() {
     setLoading(true);
@@ -193,6 +332,14 @@ export default function UserManagementSection() {
   const someSelected =
     !allSelected && selectableIds.some((id) => selectedIds.has(id));
 
+  // สรุปจำนวนตามสิทธิ์ ใช้แสดงเป็นการ์ดสรุปด้านบนตาราง
+  const summary = React.useMemo(() => {
+    const total = users.length;
+    const admins = users.filter((u) => u.role_name === "admin").length;
+    const pending = users.filter((u) => !u.is_approved).length;
+    return { total, admins, pending };
+  }, [users]);
+
   // ล้างการเลือกเมื่อเปลี่ยนคำค้นหา/ตัวกรอง เพื่อไม่ให้ดำเนินการกับแถวที่ถูกซ่อนอยู่โดยไม่ตั้งใจ
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -225,6 +372,7 @@ export default function UserManagementSection() {
     setBulkAction(null);
     setBulkPassword("");
     setBulkError("");
+    setShowBulkPassword(false);
   }
 
   async function handleConfirmBulkAction() {
@@ -274,8 +422,8 @@ export default function UserManagementSection() {
     e.preventDefault();
     setError("");
 
-    if (form.password.length < 8) {
-      setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+    if (!isCreatePasswordValid) {
+      setError(createPasswordErrors[0] || "รหัสผ่านไม่ตรงตามเงื่อนไข");
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -339,7 +487,14 @@ export default function UserManagementSection() {
   }
 
   // เปิด popup ยืนยันก่อนระงับ/เปิดใช้งานบัญชี (แทนการยิง API ทันทีตอนคลิก chip)
+  // กันดำเนินการกับบัญชีของตัวเองเสมอ ไม่ว่าจะกดจาก chip สถานะหรือปุ่มในคอลัมน์การจัดการ
   function requestToggleStatus(user) {
+    if (user.user_id === currentUser?.user_id) {
+      setError(
+        "ไม่สามารถระงับการใช้งานบัญชีของตัวเองได้ กรุณาให้ผู้ดูแลระบบท่านอื่นดำเนินการ",
+      );
+      return;
+    }
     setStatusTarget(user);
   }
 
@@ -355,6 +510,11 @@ export default function UserManagementSection() {
           ? `ระงับการใช้งานบัญชี ${statusTarget.email} แล้ว`
           : `เปิดใช้งานบัญชี ${statusTarget.email} แล้ว`,
       );
+
+      setTimeout(() => {
+        setInfo("");
+      }, 6000);
+
       setStatusTarget(null);
       await fetchUsers();
     } catch (err) {
@@ -365,7 +525,14 @@ export default function UserManagementSection() {
   }
 
   // เปิด popup ยืนยันก่อนลบผู้ใช้งาน (แทน window.confirm)
+  // กันลบบัญชีของตัวเองเสมอ
   function requestDelete(user) {
+    if (user.user_id === currentUser?.user_id) {
+      setError(
+        "ไม่สามารถลบบัญชีของตัวเองได้ กรุณาให้ผู้ดูแลระบบท่านอื่นดำเนินการ",
+      );
+      return;
+    }
     setDeleteTarget(user);
   }
 
@@ -387,8 +554,8 @@ export default function UserManagementSection() {
   async function handleResetPassword(e) {
     e.preventDefault();
     setError("");
-    if (resetPasswordValue.length < 8) {
-      setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+    if (!isResetPasswordValid) {
+      setError(resetPasswordErrors[0] || "รหัสผ่านไม่ตรงตามเงื่อนไข");
       return;
     }
     try {
@@ -407,6 +574,7 @@ export default function UserManagementSection() {
 
   return (
     <Box>
+      {/* ===== Header ===== */}
       <Stack
         sx={{
           mb: 2,
@@ -432,19 +600,105 @@ export default function UserManagementSection() {
 
         <Button
           variant="contained"
+          disableElevation
           startIcon={<PersonAddRoundedIcon />}
           onClick={() => setAddOpen(true)}
           sx={{
-            borderRadius: `${radius}px`,
+            height: 36,
+            borderRadius: 50,
             textTransform: "none",
-            fontWeight: 700,
+            fontWeight: 600,
+            px: 4,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           เพิ่มผู้ใช้งาน
         </Button>
       </Stack>
 
-      {info && (
+      {/* ===== การ์ดสรุปภาพรวม ===== */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        sx={{ mb: 2.5 }}
+      >
+        {[
+          {
+            label: "ผู้ดูแลระบบ",
+            value: summary.admins,
+            icon: <AdminPanelSettingsRoundedIcon sx={{ fontSize: 20 }} />,
+            // สีม่วง — แยกให้ชัดจากการ์ดอื่น ไม่ fallback ไปเป็นสีเดียวกับ "ผู้ใช้งาน"
+            color: theme.palette.secondary?.main || "#7c3aed",
+          },
+          {
+            label: "ผู้ใช้งาน",
+            value: summary.total,
+            icon: <GroupRoundedIcon sx={{ fontSize: 20 }} />,
+            // สีหลักของระบบ (primary)
+            color: primary.main,
+          },
+          {
+            label: "รอการอนุมัติ",
+            value: summary.pending,
+            icon: <HourglassTopRoundedIcon sx={{ fontSize: 20 }} />,
+            // สีส้ม/เหลือง เตือนให้สังเกตเห็นง่าย
+            color: theme.palette.warning?.main || "#f59e0b",
+          },
+        ].map((card) => (
+          <Paper
+            key={card.label}
+            variant="outlined"
+            sx={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              px: 2,
+              py: 1.5,
+              borderRadius: `${radius + 2}px`,
+              borderColor: divider,
+              bgcolor: background.paper,
+            }}
+          >
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: `${radius}px`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: alpha(card.color, 0.12),
+                color: card.color,
+                flexShrink: 0,
+              }}
+            >
+              {card.icon}
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{ fontSize: 12.5, color: text.secondary, lineHeight: 1.3 }}
+              >
+                {card.label}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: card.color,
+                  lineHeight: 1.3,
+                }}
+              >
+                {card.value}
+              </Typography>
+            </Box>
+          </Paper>
+        ))}
+      </Stack>
+
+      <Fade in={Boolean(info)} unmountOnExit>
         <Alert
           severity="success"
           sx={{ mb: 2, borderRadius: `${radius}px` }}
@@ -452,8 +706,8 @@ export default function UserManagementSection() {
         >
           {info}
         </Alert>
-      )}
-      {error && (
+      </Fade>
+      <Fade in={Boolean(error)} unmountOnExit>
         <Alert
           severity="error"
           sx={{ mb: 2, borderRadius: `${radius}px` }}
@@ -461,65 +715,76 @@ export default function UserManagementSection() {
         >
           {error}
         </Alert>
-      )}
+      </Fade>
 
       {/* แถบค้นหา + กรองสิทธิ์ */}
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.5}
-        sx={{ mb: 2 }}
+      <Paper
+        variant="outlined"
+        sx={{
+          mb: 2,
+          p: 1.5,
+          borderRadius: `${radius + 2}px`,
+          borderColor: divider,
+          bgcolor: background.paper,
+        }}
       >
-        <TextField
-          size="small"
-          placeholder="ค้นหาจากอีเมลหรือชื่อ-นามสกุล..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          sx={{
-            flex: 1,
-            "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` },
-          }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon
-                    sx={{ fontSize: 18, color: text.secondary }}
-                  />
-                </InputAdornment>
-              ),
-              endAdornment: searchText ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSearchText("")}>
-                    <ClearRoundedIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-            },
-          }}
-        />
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="role-filter-label" htmlFor="role-filter-input">
-            สิทธิ์
-          </InputLabel>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+          <TextField
+            size="small"
+            placeholder="ค้นหาจากอีเมลหรือชื่อ-นามสกุล..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            sx={{
+              flex: 1,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: `${radius}px`,
+                bgcolor: background.default,
+              },
+            }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon
+                      sx={{ fontSize: 18, color: text.secondary }}
+                    />
+                  </InputAdornment>
+                ),
+                endAdornment: searchText ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchText("")}>
+                      <ClearRoundedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              },
+            }}
+          />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="role-filter-label" htmlFor="role-filter-input">
+              สิทธิ์
+            </InputLabel>
 
-          <Select
-            labelId="role-filter-label"
-            slotProps={{ htmlInput: { id: "role-filter-input" } }}
-            id="role-filter"
-            inputProps={{ id: "role-filter-input" }}
-            label="สิทธิ์"
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-          >
-            <MenuItem value="all">ทั้งหมด</MenuItem>
-            <MenuItem value="admin">Admin</MenuItem>
-            <MenuItem value="user">User</MenuItem>
-          </Select>
-        </FormControl>
-      </Stack>
+            <Select
+              labelId="role-filter-label"
+              slotProps={{ htmlInput: { id: "role-filter-input" } }}
+              id="role-filter"
+              inputProps={{ id: "role-filter-input" }}
+              label="สิทธิ์"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              sx={{ borderRadius: `${radius}px`, bgcolor: background.default }}
+            >
+              <MenuItem value="all">ทั้งหมด</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
+              <MenuItem value="user">User</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
+      </Paper>
 
       {/* แถบดำเนินการพร้อมกัน — แสดงเมื่อมีการเลือกอย่างน้อย 1 แถว */}
-      {selectedCount > 0 && (
+      <Fade in={selectedCount > 0} unmountOnExit>
         <Box
           sx={{
             display: "flex",
@@ -530,13 +795,13 @@ export default function UserManagementSection() {
             px: 2,
             py: 1.25,
             mb: 1.5,
-            borderRadius: `${radius}px`,
-            bgcolor: alpha(primary.main, 0.08),
-            border: `1px solid ${alpha(primary.main, 0.3)}`,
+            borderRadius: `${radius + 2}px`,
+            bgcolor: alpha(primary.main, 0.05),
+            border: `1px solid ${alpha(primary.main, 0.25)}`,
           }}
         >
           <Typography
-            sx={{ fontSize: 13.5, fontWeight: 700, color: primary.main }}
+            sx={{ fontSize: 14, fontWeight: 600, color: primary.main }}
           >
             เลือกแล้ว {selectedCount} รายการ
           </Typography>
@@ -549,8 +814,13 @@ export default function UserManagementSection() {
               onClick={() => requestBulkAction("activate")}
               sx={{
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 500,
                 borderRadius: `${radius}px`,
+                borderColor: "success.main",
+                "&:hover": {
+                  bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
+                  borderColor: "success.main",
+                },
               }}
             >
               เปิดใช้งาน
@@ -563,8 +833,13 @@ export default function UserManagementSection() {
               onClick={() => requestBulkAction("deactivate")}
               sx={{
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 500,
                 borderRadius: `${radius}px`,
+                borderColor: "warning.main",
+                "&:hover": {
+                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                  borderColor: "warning.main",
+                },
               }}
             >
               ระงับการใช้งาน
@@ -577,30 +852,42 @@ export default function UserManagementSection() {
               onClick={() => requestBulkAction("delete")}
               sx={{
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 500,
                 borderRadius: `${radius}px`,
+                borderColor: "error.main",
+                "&:hover": {
+                  bgcolor: (theme) => alpha(theme.palette.error.main, 0.08),
+                  borderColor: "error.main",
+                },
               }}
             >
               ลบ
             </Button>
             <Button
               size="small"
+              variant="text"
               onClick={() => setSelectedIds(new Set())}
-              sx={{ textTransform: "none", color: text.secondary }}
+              sx={{
+                color: text.secondary,
+                textTransform: "none",
+                fontWeight: 500,
+                borderRadius: `${radius}px`,
+              }}
             >
               ยกเลิกการเลือก
             </Button>
           </Stack>
         </Box>
-      )}
+      </Fade>
 
       <Box
         sx={{
           border: `1px solid ${divider}`,
-          borderRadius: `${radius + 4}px`,
+          borderRadius: `${radius + 2}px`,
           overflow: "hidden",
           bgcolor: background.paper,
           maxWidth: "100%",
+          boxShadow: `0 1px 2px ${alpha("#000", 0.04)}`,
         }}
       >
         <TableContainer
@@ -620,6 +907,9 @@ export default function UserManagementSection() {
             sx={{
               minWidth: 900,
               "& th, & td": { whiteSpace: "nowrap" },
+              "& tbody tr": {
+                transition: "background-color 120ms ease",
+              },
               "& th:first-of-type, & td:first-of-type": {
                 position: "sticky",
                 left: 0,
@@ -647,10 +937,13 @@ export default function UserManagementSection() {
               <TableRow
                 sx={{
                   "& th": {
-                    fontWeight: 500,
-                    fontSize: 14,
+                    fontWeight: 600,
+                    fontSize: 13,
                     color: text.secondary,
                     bgcolor: background.default,
+                    borderBottom: `1px solid ${divider}`,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.03em",
                   },
                 }}
               >
@@ -661,6 +954,7 @@ export default function UserManagementSection() {
                     indeterminate={someSelected}
                     onChange={toggleSelectAll}
                     disabled={selectableIds.length === 0}
+                    sx={{ "&.Mui-disabled": { color: "#acacac" } }}
                   />
                 </TableCell>
                 <TableCell sortDirection={orderBy === "email" ? order : false}>
@@ -668,20 +962,8 @@ export default function UserManagementSection() {
                     active={orderBy === "email"}
                     direction={orderBy === "email" ? order : "asc"}
                     onClick={() => handleSort("email")}
-
                   >
-                    อีเมล
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell
-                  sortDirection={orderBy === "full_name" ? order : false}
-                >
-                  <TableSortLabel
-                    active={orderBy === "full_name"}
-                    direction={orderBy === "full_name" ? order : "asc"}
-                    onClick={() => handleSort("full_name")}
-                  >
-                    ชื่อ-นามสกุล
+                    ผู้ใช้งาน
                   </TableSortLabel>
                 </TableCell>
                 <TableCell
@@ -728,21 +1010,37 @@ export default function UserManagementSection() {
                       key={u.user_id}
                       hover
                       selected={selectedIds.has(u.user_id)}
-                      sx={
-                        isSelf
-                          ? {
-                              bgcolor: background.light,
-                              borderLeft: `3px solid ${primary.main}`,
-                              "& td:nth-of-type(2)": { pl: "13px" },
-                              "& td:first-of-type": {
-                                bgcolor: background.light,
-                              },
-                              "& td:last-of-type": {
-                                bgcolor: background.light,
-                              },
-                            }
-                          : undefined
-                      }
+                      sx={{
+                        ...(isSelf && {
+                          borderLeft: `3px solid ${primary.main}`,
+                          "& td:nth-of-type(2)": { pl: "13px" },
+                        }),
+                        bgcolor: isSelf
+                          ? alpha(primary.main, 0.045)
+                          : "transparent",
+                        // สีพื้นหลังของคอลัมน์ sticky ต้องเป็นสีทึบแสงเสมอ (ไม่ใช้ alpha)
+                        // เพราะถ้าโปร่งแสง เนื้อหาของแถวอื่นที่เลื่อนอยู่ด้านล่างจะทะลุ
+                        // ขึ้นมาซ้อนทับตัวหนังสือตอน scroll แนวนอน
+                        "& td:first-of-type, & td:last-of-type": {
+                          bgcolor: isSelf
+                            ? stickyColors.self
+                            : stickyColors.normal,
+                          transition: "background-color 120ms ease",
+                        },
+                        "&:hover td:first-of-type, &:hover td:last-of-type": {
+                          bgcolor: isSelf
+                            ? stickyColors.selfHover
+                            : stickyColors.normalHover,
+                        },
+                        "&.Mui-selected td:first-of-type, &.Mui-selected td:last-of-type":
+                          {
+                            bgcolor: stickyColors.selected,
+                          },
+                        "&.Mui-selected:hover td:first-of-type, &.Mui-selected:hover td:last-of-type":
+                          {
+                            bgcolor: stickyColors.selectedHover,
+                          },
+                      }}
                     >
                       <TableCell padding="checkbox">
                         <Tooltip
@@ -760,41 +1058,51 @@ export default function UserManagementSection() {
                               checked={selectedIds.has(u.user_id)}
                               onChange={() => toggleSelectRow(u.user_id)}
                               disabled={isSelf}
+                              sx={{ "&.Mui-disabled": { color: "#acacac" } }}
                             />
                           </span>
                         </Tooltip>
                       </TableCell>
 
-                      <TableCell
-                        sx={{ fontSize: 13, maxWidth: { xs: 200, md: "none" } }}
-                      >
-                        <Stack
-                          direction="row"
-                          // alignItems="center"
-                          spacing={1}
-                          sx={{ minWidth: 0 }}
-                        >
-                          <Box
-                            component="span"
+                      <TableCell sx={{ maxWidth: { xs: 220, md: "none" } }}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
                             sx={{
+                              fontSize: 13.5,
+                              fontWeight: isSelf ? 600 : 500,
+                              color: text.head,
                               overflow: "hidden",
                               textOverflow: "ellipsis",
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {u.full_name || "-"}
+                            {isSelf && (
+                              <Box
+                                component="span"
+                                sx={{
+                                  ml: 0.75,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: primary.main,
+                                }}
+                              >
+                                (คุณ)
+                              </Box>
+                            )}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+                              color: text.secondary,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              lineHeight: 1.4,
                             }}
                           >
                             {u.email}
-                          </Box>
-                        </Stack>
-                      </TableCell>
-
-                      <TableCell
-                        sx={{
-                          fontSize: 13,
-                          maxWidth: { xs: 160, md: "none" },
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {u.full_name || "-"}
+                          </Typography>
+                        </Box>
                       </TableCell>
 
                       <TableCell>
@@ -825,6 +1133,13 @@ export default function UserManagementSection() {
                                 sx={{
                                   fontSize: 13,
                                   borderRadius: `${radius}px`,
+                                  "&.Mui-disabled": {
+                                    color: "#acacac",
+                                    WebkitTextFillColor: "#acacac",
+                                  },
+                                  "& .MuiSvgIcon-root.Mui-disabled": {
+                                    color: "#acacac",
+                                  },
                                 }}
                               >
                                 <MenuItem value="user">User</MenuItem>
@@ -845,24 +1160,57 @@ export default function UserManagementSection() {
                             label="รอการอนุมัติ"
                             color="warning"
                             onClick={() => requestApprove(u)}
-                            sx={{ cursor: "pointer", fontSize: 11.5 }}
+                            sx={{
+                              cursor: "pointer",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              borderRadius: `${radius}px`,
+                            }}
                           />
                         ) : (
-                          <Chip
-                            size="small"
-                            icon={
-                              u.is_active ? (
-                                <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />
-                              ) : (
-                                <BlockRoundedIcon sx={{ fontSize: 14 }} />
-                              )
+                          <Tooltip
+                            title={
+                              isSelf
+                                ? "ไม่สามารถระงับการใช้งานบัญชีของตัวเองได้"
+                                : ""
                             }
-                            label={u.is_active ? "ใช้งานได้" : "ระงับการใช้งาน"}
-                            color={u.is_active ? "success" : "default"}
-                            variant={u.is_active ? "outlined" : "filled"}
-                            onClick={() => requestToggleStatus(u)}
-                            sx={{ cursor: "pointer", fontSize: 11.5 }}
-                          />
+                            arrow
+                            disableHoverListener={!isSelf}
+                          >
+                            <span>
+                              <Chip
+                                size="small"
+                                icon={
+                                  u.is_active ? (
+                                    <CheckCircleRoundedIcon
+                                      sx={{ fontSize: 14 }}
+                                    />
+                                  ) : (
+                                    <BlockRoundedIcon sx={{ fontSize: 14 }} />
+                                  )
+                                }
+                                label={
+                                  u.is_active ? "ใช้งานได้" : "ระงับการใช้งาน"
+                                }
+                                color={u.is_active ? "success" : "default"}
+                                variant={u.is_active ? "outlined" : "filled"}
+                                onClick={() => requestToggleStatus(u)}
+                                disabled={isSelf}
+                                sx={{
+                                  cursor: isSelf ? "not-allowed" : "pointer",
+                                  fontSize: 11.5,
+                                  fontWeight: 600,
+                                  borderRadius: `${radius}px`,
+                                  "&.Mui-disabled": {
+                                    opacity: 1,
+                                    color: "#acacac",
+                                    borderColor: "#acacac",
+                                    "& .MuiChip-icon": { color: "#acacac" },
+                                  },
+                                }}
+                              />
+                            </span>
+                          </Tooltip>
                         )}
                       </TableCell>
 
@@ -876,8 +1224,6 @@ export default function UserManagementSection() {
                         <Stack
                           direction="row"
                           spacing={0.25}
-                          // justifyContent="flex-end"
-                          // alignItems="center"
                           sx={{ flexWrap: "nowrap" }}
                         >
                           {!u.is_approved && (
@@ -885,6 +1231,14 @@ export default function UserManagementSection() {
                               <IconButton
                                 size="small"
                                 onClick={() => requestApprove(u)}
+                                sx={{
+                                  "&:hover": {
+                                    bgcolor: alpha(
+                                      theme.palette.success.main,
+                                      0.1,
+                                    ),
+                                  },
+                                }}
                               >
                                 <HowToRegRoundedIcon
                                   sx={{ fontSize: 18, color: "success.main" }}
@@ -899,21 +1253,47 @@ export default function UserManagementSection() {
                                 setResetTarget(u);
                                 setResetPasswordValue("");
                               }}
+                              sx={{
+                                "&:hover": {
+                                  bgcolor: alpha(primary.main, 0.1),
+                                },
+                              }}
                             >
                               <LockResetRoundedIcon
                                 sx={{ fontSize: 18, color: primary.main }}
                               />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="ลบผู้ใช้งาน" arrow>
-                            <IconButton
-                              size="small"
-                              onClick={() => requestDelete(u)}
-                            >
-                              <DeleteRoundedIcon
-                                sx={{ fontSize: 18, color: "error.main" }}
-                              />
-                            </IconButton>
+                          <Tooltip
+                            title={
+                              isSelf
+                                ? "ไม่สามารถลบบัญชีของตัวเองได้"
+                                : "ลบผู้ใช้งาน"
+                            }
+                            arrow
+                          >
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => requestDelete(u)}
+                                disabled={isSelf}
+                                sx={{
+                                  "&:hover": {
+                                    bgcolor: alpha(
+                                      theme.palette.error.main,
+                                      0.1,
+                                    ),
+                                  },
+                                }}
+                              >
+                                <DeleteRoundedIcon
+                                  sx={{
+                                    fontSize: 18,
+                                    color: isSelf ? "#acacac" : "error.main",
+                                  }}
+                                />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         </Stack>
                       </TableCell>
@@ -968,12 +1348,17 @@ export default function UserManagementSection() {
         onClose={() => {
           setAddOpen(false);
           setForm(emptyForm);
+          setShowCreatePassword(false);
+          setShowConfirmPassword(false);
         }}
         fullWidth
         maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: `${radius + 4}px` } }}
       >
         <form onSubmit={handleCreateUser}>
-          <DialogTitle sx={{ fontWeight: 800 }}>เพิ่มผู้ใช้งานใหม่</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
+            เพิ่มผู้ใช้งานใหม่
+          </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 0.5 }}>
               <TextField
@@ -985,6 +1370,9 @@ export default function UserManagementSection() {
                 size="small"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                sx={{
+                  "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` },
+                }}
               />
               <TextField
                 id="full-name"
@@ -995,26 +1383,84 @@ export default function UserManagementSection() {
                 onChange={(e) =>
                   setForm({ ...form, full_name: e.target.value })
                 }
+                sx={{
+                  "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` },
+                }}
               />
-              <TextField
-                id="password"
-                label="รหัสผ่านเริ่มต้น"
-                type="password"
-                required
-                fullWidth
-                size="small"
-                slotProps={{ htmlInput: { minLength: 8 } }}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                helperText="อย่างน้อย 8 ตัวอักษร"
-              />
+
+              <Box>
+                <TextField
+                  id="password"
+                  label="รหัสผ่านเริ่มต้น"
+                  type={showCreatePassword ? "text" : "password"}
+                  required
+                  fullWidth
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` },
+                  }}
+                  slotProps={{
+                    htmlInput: { minLength: 10 },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            tabIndex={-1}
+                            onClick={() => setShowCreatePassword((v) => !v)}
+                            edge="end"
+                          >
+                            {showCreatePassword ? (
+                              <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                />
+                <Box sx={{ mt: 1 }}>
+                  <PasswordChecklist password={form.password} />
+                </Box>
+              </Box>
+
               <TextField
                 id="confirm-password"
                 label="ยืนยันรหัสผ่านเริ่มต้น"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 required
                 fullWidth
                 size="small"
+                sx={{
+                  "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` },
+                }}
+                slotProps={{
+                  htmlInput: { minLength: 10 },
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          tabIndex={-1}
+                          onClick={() => setShowConfirmPassword((v) => !v)}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? (
+                            <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                          ) : (
+                            <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
                 value={form.confirmPassword}
                 onChange={(e) =>
                   setForm({ ...form, confirmPassword: e.target.value })
@@ -1044,6 +1490,7 @@ export default function UserManagementSection() {
                   onChange={(e) =>
                     setForm({ ...form, role_name: e.target.value })
                   }
+                  sx={{ borderRadius: `${radius}px` }}
                 >
                   <MenuItem value="user">User</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
@@ -1056,21 +1503,21 @@ export default function UserManagementSection() {
               onClick={() => {
                 setAddOpen(false);
                 setForm(emptyForm);
+                setShowCreatePassword(false);
+                setShowConfirmPassword(false);
               }}
-              sx={{ textTransform: "none" }}
+              sx={{ textTransform: "none", borderRadius: `${radius}px` }}
             >
               ยกเลิก
             </Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={
-                form.password.length < 8 ||
-                form.password !== form.confirmPassword
-              }
+              disableElevation
+              disabled={!isCreatePasswordValid || !createPasswordsMatch}
               sx={{
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 600,
                 borderRadius: `${radius}px`,
               }}
             >
@@ -1086,39 +1533,72 @@ export default function UserManagementSection() {
         onClose={() => setResetTarget(null)}
         fullWidth
         maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: `${radius + 4}px` } }}
       >
         <form onSubmit={handleResetPassword}>
-          <DialogTitle sx={{ fontWeight: 800 }}>ตั้งรหัสผ่านใหม่</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
+            ตั้งรหัสผ่านใหม่
+          </DialogTitle>
           <DialogContent>
             <Typography sx={{ fontSize: 13, color: text.secondary, mb: 2 }}>
               สำหรับผู้ใช้งาน: <strong>{resetTarget?.email}</strong>
             </Typography>
+
             <TextField
               id="reset-password"
               label="รหัสผ่านใหม่"
-              type="text"
+              type={showResetPassword ? "text" : "password"}
               required
               fullWidth
               size="small"
-              slotProps={{ htmlInput: { minLength: 8 } }}
+              sx={{
+                "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` },
+              }}
+              slotProps={{
+                htmlInput: { minLength: 10 },
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        tabIndex={-1}
+                        onClick={() => setShowResetPassword((v) => !v)}
+                        edge="end"
+                      >
+                        {showResetPassword ? (
+                          <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                        ) : (
+                          <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
               value={resetPasswordValue}
               onChange={(e) => setResetPasswordValue(e.target.value)}
-              helperText="อย่างน้อย 8 ตัวอักษร — แจ้งให้ผู้ใช้งานทราบผ่านช่องทางที่ปลอดภัยหลังบันทึก"
+              helperText="แจ้งให้ผู้ใช้งานทราบผ่านช่องทางที่ปลอดภัยหลังบันทึก"
             />
+
+            <Box sx={{ mt: 1 }}>
+              <PasswordChecklist password={resetPasswordValue} />
+            </Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5 }}>
             <Button
               onClick={() => setResetTarget(null)}
-              sx={{ textTransform: "none" }}
+              sx={{ textTransform: "none", borderRadius: `${radius}px` }}
             >
               ยกเลิก
             </Button>
             <Button
               type="submit"
               variant="contained"
+              disableElevation
+              disabled={!isResetPasswordValid}
               sx={{
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 600,
                 borderRadius: `${radius}px`,
               }}
             >
@@ -1201,8 +1681,9 @@ export default function UserManagementSection() {
         onClose={closeBulkDialog}
         fullWidth
         maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: `${radius + 4}px` } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
           {bulkAction ? BULK_ACTION_LABELS[bulkAction.type].title : ""}
         </DialogTitle>
         <DialogContent>
@@ -1218,6 +1699,7 @@ export default function UserManagementSection() {
               border: `1px solid ${divider}`,
               borderRadius: `${radius}px`,
               p: 1,
+              bgcolor: background.default,
             }}
           >
             {bulkAction?.targets?.map((u) => (
@@ -1238,7 +1720,7 @@ export default function UserManagementSection() {
 
           <TextField
             label="กรอกรหัสผ่านของท่านเพื่อยืนยัน"
-            type="password"
+            type={showBulkPassword ? "text" : "password"}
             fullWidth
             required
             size="small"
@@ -1250,6 +1732,27 @@ export default function UserManagementSection() {
                 e.preventDefault();
                 handleConfirmBulkAction();
               }
+            }}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: `${radius}px` } }}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      tabIndex={-1}
+                      onClick={() => setShowBulkPassword((v) => !v)}
+                      edge="end"
+                    >
+                      {showBulkPassword ? (
+                        <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                      ) : (
+                        <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
             }}
           />
 
@@ -1266,12 +1769,13 @@ export default function UserManagementSection() {
           <Button
             onClick={closeBulkDialog}
             disabled={bulkProcessing}
-            sx={{ textTransform: "none" }}
+            sx={{ textTransform: "none", borderRadius: `${radius}px` }}
           >
             ยกเลิก
           </Button>
           <Button
             variant="contained"
+            disableElevation
             color={
               bulkAction ? BULK_ACTION_LABELS[bulkAction.type].color : "primary"
             }
@@ -1279,7 +1783,7 @@ export default function UserManagementSection() {
             disabled={bulkProcessing || !bulkPassword}
             sx={{
               textTransform: "none",
-              fontWeight: 700,
+              fontWeight: 600,
               borderRadius: `${radius}px`,
             }}
           >
