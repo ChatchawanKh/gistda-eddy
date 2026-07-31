@@ -25,10 +25,14 @@
     "dotenv": "^17.4.2",
     "express-rate-limit": "^8.6.0",
     "helmet": "^8.3.0",
+    "highcharts": "^13.0.0",
+    "highcharts-react-official": "^3.2.3",
     "jsonwebtoken": "^9.0.3",
+    "leaflet": "^1.9.4",
     "prisma": "^6.19.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {

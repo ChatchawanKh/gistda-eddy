@@ -1,0 +1,104 @@
+// src/pages/Dashboard/utils/highchartsSetup.js
+// ตั้งค่า Highcharts กลาง "ที่เดียว" ให้ทุกกราฟใน Dashboard ใช้ instance เดียวกัน
+// เปิดใช้งาน module ทางการของ Highcharts เอง แทนการเขียนปุ่ม Export/Fullscreen
+// เองทีละกราฟ ตามข้อกำหนด UX/UI ที่ให้ทุกกราฟมี Export (PNG/CSV) และ Fullscreen:
+//   - exporting        -> ปุ่มเมนู (มุมขวาบนของกราฟ)
+//   - export-data      -> เพิ่มตัวเลือก "Download CSV" ในเมนู exporting
+//   - full-screen      -> เพิ่มตัวเลือก "View in full screen" ในเมนู exporting
+//   - heatmap          -> ใช้กับ HeatmapChartCard.jsx
+import Highcharts from "highcharts";
+import HighchartsExporting from "highcharts/modules/exporting";
+import HighchartsExportData from "highcharts/modules/export-data";
+import HighchartsFullScreen from "highcharts/modules/full-screen";
+import HighchartsHeatmap from "highcharts/modules/heatmap";
+
+// module ของ Highcharts เป็น UMD — บาง bundler (Vite/Rolldown บางเวอร์ชัน)
+// interop default export ผิดพลาดเป็น namespace object แทนฟังก์ชันตรง ๆ
+// (ปัญหาเดียวกับที่ highcharts-react-official เจอ ดูคอมเมนต์ในกราฟอื่น ๆ)
+// ฟังก์ชันนี้กันปัญหานั้นไว้ ไม่ว่า bundler จะ interop มาแบบไหนก็ตาม
+function initModule(mod) {
+  const fn = mod?.default?.default || mod?.default || mod;
+  if (typeof fn === "function") fn(Highcharts);
+}
+
+initModule(HighchartsExporting);
+initModule(HighchartsExportData);
+initModule(HighchartsFullScreen);
+initModule(HighchartsHeatmap);
+
+// โทนสีคัดลอกมาจาก design tokens ใน src/theme/Theme.jsx (BLUE/GRAY) — คงไว้แค่
+// เฉดที่ใช้จริงกับเมนูนี้ ไม่ import ไฟล์ Theme.jsx ตรง ๆ เพราะไฟล์นี้ทำงานนอก
+// React tree (โหลดครั้งเดียวตอน import module) จึงไม่มี ThemeProvider context
+// ให้ใช้ useTheme() ได้ — ถ้าปรับสีหลักใน Theme.jsx ให้อัปเดตค่าที่นี่ตามด้วย
+const MENU_COLORS = {
+  grayText: "#46423C", // GRAY[700]
+  graySubtle: "#8A8378", // GRAY[500]
+  grayHover: "#F1EFEA", // GRAY[100]
+  grayBorder: "#E6E2DA", // GRAY[200]
+  blueHoverBg: "#EAF2FF", // BLUE[50]
+  blueHoverText: "#0038AD", // BLUE[700]
+};
+
+// จัดสไตล์ปุ่ม context menu (ไอคอนแฮมเบอร์เกอร์) + เมนู dropdown ที่กดแล้ว
+// เปิดขึ้นมา ให้เข้าธีมของแอป แทนหน้าตา default ของ Highcharts (สี่เหลี่ยม
+// ดำทึบ มุมเหลี่ยม) ใช้ Highcharts.setOptions ตั้งครั้งเดียวให้ทุกกราฟทั่วแอป
+Highcharts.setOptions({
+  lang: {
+    contextButtonTitle: "ตัวเลือกเพิ่มเติม",
+    downloadPNG: "ดาวน์โหลดรูปภาพ (PNG)",
+    downloadCSV: "ดาวน์โหลดข้อมูล (CSV)",
+    viewFullscreen: "ดูแบบเต็มจอ",
+    exitFullscreen: "ออกจากโหมดเต็มจอ",
+  },
+  navigation: {
+    buttonOptions: {
+      symbolStroke: MENU_COLORS.graySubtle,
+      symbolStrokeWidth: 1.75,
+      theme: {
+        fill: "transparent",
+        stroke: "none",
+        r: 8,
+        padding: 6,
+        states: {
+          hover: { fill: MENU_COLORS.grayHover },
+          select: { fill: MENU_COLORS.grayBorder },
+        },
+      },
+    },
+    menuStyle: {
+      background: "#FFFFFF",
+      border: `1px solid ${MENU_COLORS.grayBorder}`,
+      borderRadius: "12px",
+      boxShadow: "0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.06)",
+      padding: "6px",
+    },
+    menuItemStyle: {
+      color: MENU_COLORS.grayText,
+      fontSize: "12.5px",
+      fontFamily: '"Kanit", "Noto Sans Thai", sans-serif',
+      fontWeight: "500",
+      padding: "8px 12px",
+      margin: "1px 0",
+      borderRadius: "8px",
+      transition: "background-color 120ms ease, color 120ms ease",
+    },
+    menuItemHoverStyle: {
+      background: MENU_COLORS.blueHoverBg,
+      color: MENU_COLORS.blueHoverText,
+    },
+  },
+});
+
+// ค่าเริ่มต้นของเมนู export ให้ทุกกราฟใช้ร่วมกัน — ตัดปุ่ม print/PDF/SVG ที่ไม่
+// ค่อยเกี่ยวข้องออก เหลือแค่ Fullscreen + Download PNG + Download CSV ตามที่
+// requirement ต้องการ (Export PNG / CSV, Fullscreen)
+export const EXPORTING_DEFAULTS = {
+  enabled: true,
+  buttons: {
+    contextButton: {
+      menuItems: ["viewFullscreen", "separator", "downloadPNG", "downloadCSV"],
+    },
+  },
+};
+
+export default Highcharts;

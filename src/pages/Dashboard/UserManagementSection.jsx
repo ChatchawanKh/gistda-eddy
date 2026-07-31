@@ -2135,7 +2135,7 @@ export default function UserManagementSection() {
               textTransform: "none",
               fontWeight: 400,
               borderRadius: `${radius}px`,
-              color: "#fff"
+              color: "#fff",
             }}
           >
             {bulkProcessing

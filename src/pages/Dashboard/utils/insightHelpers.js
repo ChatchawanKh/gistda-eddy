@@ -1,0 +1,92 @@
+// src/pages/Dashboard/utils/insightHelpers.js
+// ฟังก์ชันช่วยสำหรับหน้า "อินไซต์ข้อมูล": หาตัวแปรลมจากชื่อ ObservedProperty
+// และคำนวณข้อมูลสำหรับ wind rose (กราฟทิศทาง+ความเร็วลมแบบเรดาร์)
+
+// ค้นหา Datastream จาก keyword ในชื่อ (case-insensitive) — ใช้หา "ความเร็วลม"
+// และ "ทิศทางลม" จากรายชื่อ ObservedProperty ที่ตั้งไว้ไม่แน่นอนในแต่ละสถานี
+export function findDatastreamByKeywords(datastreams, keywords) {
+  const norm = (s) => (s || "").toLowerCase();
+  return datastreams.find((ds) => {
+    const name = norm(ds.ObservedProperty?.name || ds.name);
+    return keywords.some((k) => name.includes(k.toLowerCase()));
+  });
+}
+
+export const WIND_SPEED_KEYWORDS = [
+  "wind speed",
+  "windspeed",
+  "wind_speed",
+  "ความเร็วลม",
+];
+
+export const WIND_DIRECTION_KEYWORDS = [
+  "wind direction",
+  "wind dir",
+  "wind_direction",
+  "ทิศทางลม",
+  "ทิศลม",
+];
+
+// เรียงตามเข็มนาฬิกาเริ่มจากทิศเหนือ (มาตรฐานเข็มทิศ 16 ทิศ)
+export const COMPASS_SECTORS = [
+  "N", "NNE", "NE", "ENE",
+  "E", "ESE", "SE", "SSE",
+  "S", "SSW", "SW", "WSW",
+  "W", "WNW", "NW", "NNW",
+];
+
+// แปลงองศา (0-360) เป็น index ของ 16 ทิศ
+export function degToSectorIndex(deg) {
+  const normalized = ((deg % 360) + 360) % 360;
+  return Math.round(normalized / 22.5) % 16;
+}
+
+function binIndexFor(speed, edges) {
+  for (let i = 0; i < edges.length; i++) {
+    if (speed < edges[i]) return i;
+  }
+  return edges.length;
+}
+
+// จับคู่ข้อมูลความเร็วลม + ทิศทางลมด้วย phenomenonTime ที่ตรงกันพอดี (สมมติว่า
+// สถานีบันทึกทั้งสองค่าพร้อมกันในรอบเดียวกัน) แล้วนับความถี่ลงในตาราง
+// [speedBin][sector] เป็น % ของจำนวนคู่ข้อมูลที่จับคู่ได้ทั้งหมด สำหรับพล็อต
+// เป็น Highcharts polar stacked column (wind rose)
+export function buildWindRoseMatrix(speedRows, directionRows, speedBinEdges) {
+  const dirByTime = new Map(directionRows.map((r) => [r.phenomenonTime, r.result]));
+  const matrix = Array.from({ length: speedBinEdges.length + 1 }, () => Array(16).fill(0));
+  let matched = 0;
+
+  speedRows.forEach((row) => {
+    const dir = dirByTime.get(row.phenomenonTime);
+    if (dir === undefined || dir === null) return;
+    if (row.result === undefined || row.result === null) return;
+    const sector = degToSectorIndex(Number(dir));
+    const bin = binIndexFor(Number(row.result), speedBinEdges);
+    matrix[bin][sector] += 1;
+    matched += 1;
+  });
+
+  if (matched === 0) return null;
+
+  return {
+    matched,
+    percentages: matrix.map((bin) => bin.map((count) => (count / matched) * 100)),
+  };
+}
+
+// คำนวณขอบเขตช่วงความเร็ว (bin edges) แบบไดนามิกจากค่าสูงสุดที่พบจริง แบ่งเป็น
+// 5 ช่วงเท่า ๆ กัน (คืนค่า 4 ขอบเขต) ปัดเป็นทศนิยม 1 ตำแหน่ง
+export function computeSpeedBinEdges(speedRows) {
+  const values = speedRows.map((r) => Number(r.result)).filter((v) => Number.isFinite(v));
+  const max = values.length ? Math.max(...values) : 0;
+  const step = max > 0 ? max / 5 : 1;
+  return [1, 2, 3, 4].map((i) => Math.round(step * i * 10) / 10);
+}
+
+export function speedBinLabel(index, edges, unit) {
+  const u = unit ? ` ${unit}` : "";
+  if (index === 0) return `< ${edges[0]}${u}`;
+  if (index === edges.length) return `≥ ${edges[edges.length - 1]}${u}`;
+  return `${edges[index - 1]}–${edges[index]}${u}`;
+}
