@@ -19,9 +19,19 @@ const HighchartsReact =
 
 const WEEKDAY_LABELS_TH = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 
-export default function HeatmapChartCard({ rows, unit, variableName, loading }) {
+export default function HeatmapChartCard({
+  rows,
+  unit,
+  variableName,
+  loading,
+  color,
+  datastreamId,
+  from,
+  to,
+}) {
   const theme = useTheme();
   const { text, background, divider, primary } = theme.palette;
+  const seriesColor = color || primary.main;
 
   const heatmap = React.useMemo(() => groupHourlyHeatmap(rows), [rows]);
 
@@ -58,8 +68,8 @@ export default function HeatmapChartCard({ rows, unit, variableName, loading }) 
     },
     colorAxis: {
       min: 0,
-      minColor: `${primary.main}1a`,
-      maxColor: primary.main,
+      minColor: `${seriesColor}1a`,
+      maxColor: seriesColor,
     },
     legend: {
       align: "right",
@@ -89,9 +99,12 @@ export default function HeatmapChartCard({ rows, unit, variableName, loading }) 
 
   return (
     <Box sx={cardSx}>
-      <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary, mb: 0.25 }}>
-        Heatmap รายชั่วโมง — {variableName || "ตัวแปรหลัก"}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.25 }}>
+        <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: seriesColor, flexShrink: 0 }} />
+        <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
+          Heatmap รายชั่วโมง — {variableName || "ตัวแปรหลัก"}
+        </Typography>
+      </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         ค่าเฉลี่ยแยกตามวันในสัปดาห์และชั่วโมง{unit ? ` (${unit})` : ""}
       </Typography>
@@ -103,7 +116,10 @@ export default function HeatmapChartCard({ rows, unit, variableName, loading }) 
             ข้อมูลยังไม่พอสำหรับสร้าง Heatmap (ต้องมีข้อมูลกระจายหลายช่วงเวลา)
           </Typography>
         ) : (
-          <Box sx={{ width: "100%" }}>
+          // [แก้บัค] เดียวกับ WindRoseChart.jsx — บังคับสร้างกราฟใหม่ทุกครั้งที่
+          // ตัวแปร/ช่วงเวลาเปลี่ยน แทนที่จะพึ่ง chart.update() ของ
+          // highcharts-react-official (ดูคอมเมนต์เต็มใน WindRoseChart.jsx)
+          <Box key={`${datastreamId}-${from}-${to}`} sx={{ width: "100%" }}>
             <HighchartsReact highcharts={Highcharts} options={chartOptions} />
           </Box>
         )}

@@ -15,7 +15,7 @@
 //   4) ตัวเลือกสถานี (แผนที่ + dropdown + ค้นหาตัวแปรโดยตรง)
 //   5) เมื่อเลือกสถานีแล้ว: Multi-chart grid ของสถานีนั้น จัด layout ตาม
 //      ความสำคัญของข้อมูล (Priority-based Layout) — ถ้าสถานีมีข้อมูลลม
-//      Wind Rose (Radar Chart) จะอยู่ตำแหน่งแรก/โดดเด่นที่สุดของกริดเสมอ
+//      Wind Rose Chart จะอยู่ตำแหน่งแรก/โดดเด่นที่สุดของกริดเสมอ
 //      ตามด้วย Time Series, Bar Chart รายวัน, Heatmap รายชั่วโมง แล้วตามด้วย
 //      กราฟย่อย (small multiples) ของตัวแปรอื่น ๆ ทั้งหมด และตารางค่าล่าสุด
 import * as React from "react";
@@ -66,6 +66,7 @@ import {
 } from "../utils/insightHelpers";
 import { summarizeObservations, findLatestAvailableDate } from "../utils/insightSummary";
 import { buildDatePresets } from "../utils/dateRangePresets";
+import { getChartColor } from "../utils/chartColors";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -182,6 +183,9 @@ export default function DashboardInsight({ things, loading, error }) {
   const primarySummary = React.useMemo(() => summarizeObservations(primaryRows), [primaryRows]);
   const primaryUnit = primaryDatastream?.unitOfMeasurement?.symbol || "";
   const primaryName = primaryDatastream?.ObservedProperty?.name || primaryDatastream?.name || "";
+  // สีประจำตัวของตัวแปรหลักที่กำลังดูอยู่ — ใช้ร่วมกันทั้ง 3 กราฟ (Time Series,
+  // Bar รายวัน, Heatmap) ของตัวแปรเดียวกัน เพื่อให้รู้ทันทีว่าเป็นชุดเดียวกัน
+  const primaryColor = getChartColor(primaryDatastream?.["@iot.id"], primary.main);
 
   if (loading) {
     return (
@@ -205,12 +209,23 @@ export default function DashboardInsight({ things, loading, error }) {
   const CATEGORY_CARD_HEIGHT = 300;
 
   const overviewCards = [
-    { label: "สถานีทั้งหมด", value: things.length, icon: LocationOnRoundedIcon },
-    { label: "ตัวแปรที่ตรวจวัด (Datastreams)", value: datastreams.length, icon: ShowChartRoundedIcon },
+    {
+      label: "สถานีทั้งหมด",
+      value: things.length,
+      icon: LocationOnRoundedIcon,
+      color: primary.main,
+    },
+    {
+      label: "ตัวแปรที่ตรวจวัด (Datastreams)",
+      value: datastreams.length,
+      icon: ShowChartRoundedIcon,
+      color: "#3EAE7E",
+    },
     {
       label: "ข้อมูลล่าสุด",
       value: latestAvailableDate ? timeAgoLabel(latestAvailableDate) : "ไม่มีข้อมูล",
       icon: UpdateRoundedIcon,
+      color: "#E8874A",
     },
   ];
 
@@ -298,14 +313,14 @@ export default function DashboardInsight({ things, loading, error }) {
                       width: 44,
                       height: 44,
                       borderRadius: "14px",
-                      bgcolor: `${primary.main}14`,
+                      bgcolor: `${c.color}14`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
                     }}
                   >
-                    <c.icon sx={{ fontSize: 21, color: primary.main }} />
+                    <c.icon sx={{ fontSize: 21, color: c.color }} />
                   </Box>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontSize: 19, fontWeight: 800, color: text.primary, lineHeight: 1.2 }}>
@@ -422,51 +437,103 @@ export default function DashboardInsight({ things, loading, error }) {
               </Alert>
             )}
 
-            {/* Priority-based layout: Wind Rose ก่อนเสมอถ้าสถานีมีข้อมูลลม
-                เพราะเป็นภาพรวมที่อ่านง่ายและสำคัญที่สุดของสถานีอุตุนิยมวิทยา */}
+            {/* โซน "รายละเอียดตัวแปรที่กำลังดู" — ห่อด้วยกรอบ/พื้นหลังโทนสี
+                primary อ่อน ๆ ให้แยกออกจากโซน "ตัวแปรอื่น ๆ" ด้านล่างอย่าง
+                ชัดเจน (ทั้งสีพื้นหลัง กรอบ และหัวข้อ) ไม่ใช่แค่ระยะห่างเฉย ๆ
+                ภายในจัด Priority-based layout: Wind Rose ก่อนเสมอถ้าสถานีมี
+                ข้อมูลลม เพราะเป็นภาพรวมที่อ่านง่ายและสำคัญที่สุด */}
             <Box
               sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                gap: 2,
-                mb: 2,
+                border: `1px solid ${primary.main}33`,
+                bgcolor: `${primary.main}06`,
+                borderRadius: `${theme.shape.borderRadius + 4}px`,
+                p: { xs: 1.5, sm: 2.5 },
+                mb: 3,
               }}
             >
-              {hasWind && (
-                <WindRoseChart
-                  speedDatastream={speedDatastream}
-                  directionDatastream={directionDatastream}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.25 }}>
+                <ShowChartRoundedIcon sx={{ fontSize: 18, color: primary.main }} />
+                <Typography sx={{ fontSize: 14, fontWeight: 700, color: primary.main }}>
+                  {primaryDatastream
+                  ? `${selectedThing.name} · ${primaryName}${
+                      primaryUnit ? ` (${primaryUnit})` : ""
+                    }`
+                  : ""}
+                </Typography>
+              </Box>
+              <Typography sx={{ fontSize: 12, color: text.secondary, mb: 2 }}>
+                {primaryDatastream
+                  ? `${selectedThing.name} · ${primaryName}${
+                      primaryUnit ? ` (${primaryUnit})` : ""
+                    } — คลิกแถวในตารางด้านล่างเพื่อเปลี่ยนตัวแปร`
+                  : "เลือกตัวแปรจากตารางด้านล่างเพื่อดูรายละเอียด"}
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                  gap: 2,
+                }}
+              >
+                {hasWind && (
+                  <WindRoseChart
+                    speedDatastream={speedDatastream}
+                    directionDatastream={directionDatastream}
+                    from={range.from}
+                    to={range.to}
+                  />
+                )}
+                
+                <InsightRangedChart
+                  datastream={primaryDatastream}
+                  from={range.from}
+                  to={range.to}
+                  color={primaryColor}
+                />
+                <BarChartCard
+                  rows={primaryRows}
+                  unit={primaryUnit}
+                  variableName={primaryName}
+                  loading={primaryFetching}
+                  color={primaryColor}
+                  datastreamId={primaryDatastream?.["@iot.id"]}
                   from={range.from}
                   to={range.to}
                 />
-              )}
-              <InsightRangedChart datastream={primaryDatastream} from={range.from} to={range.to} />
-              <BarChartCard
-                rows={primaryRows}
-                unit={primaryUnit}
-                variableName={primaryName}
-                loading={primaryFetching}
-              />
-              <HeatmapChartCard
-                rows={primaryRows}
-                unit={primaryUnit}
-                variableName={primaryName}
-                loading={primaryFetching}
-              />
+                <HeatmapChartCard
+                  rows={primaryRows}
+                  unit={primaryUnit}
+                  variableName={primaryName}
+                  loading={primaryFetching}
+                  color={primaryColor}
+                  datastreamId={primaryDatastream?.["@iot.id"]}
+                  from={range.from}
+                  to={range.to}
+                />
+              </Box>
             </Box>
 
-            {/* กราฟย่อยของตัวแปรอื่น ๆ ในสถานีเดียวกัน (small multiples) */}
+            {/* โซน "ตัวแปรอื่น ๆ" — แยกออกจากโซนรายละเอียดด้านบนอย่างชัดเจน
+                ด้วยหัวข้อ + คำอธิบายของตัวเอง (ไม่มีกรอบสีไฮไลต์ เพื่อให้ดู
+                เป็นข้อมูลรอง ไม่ใช่ตัวแปรหลักที่กำลังพิจารณาอยู่) */}
             {otherDatastreams.length > 0 && (
-              <>
-                <Typography sx={{ fontSize: 13, fontWeight: 700, color: text.primary, mb: 1 }}>
-                  ตัวแปรอื่นในสถานีนี้
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.25 }}>
+                  <GridViewRoundedIcon sx={{ fontSize: 17, color: text.secondary }} />
+                  <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: text.primary }}>
+                    ตัวแปรอื่นในสถานีนี้ ({otherDatastreams.length})
+                  </Typography>
+                </Box>
+                <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1.5 }}>
+                  ภาพรวมแบบย่อของตัวแปรอื่น ๆ ที่สถานีนี้ตรวจวัด นอกเหนือจากตัวแปรที่แสดงรายละเอียดอยู่ด้านบน
+                  — คลิกแถวในตารางด้านล่างเพื่อสลับไปดูรายละเอียดของตัวแปรนั้นแทน
                 </Typography>
                 <Box
                   sx={{
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
                     gap: 2,
-                    mb: 2,
                   }}
                 >
                   {otherDatastreams.map((ds) => (
@@ -475,10 +542,11 @@ export default function DashboardInsight({ things, loading, error }) {
                       datastream={ds}
                       from={range.from}
                       to={range.to}
+                      color={getChartColor(ds["@iot.id"], primary.main)}
                     />
                   ))}
                 </Box>
-              </>
+              </Box>
             )}
 
             {/* ตารางค่าล่าสุดของทุกตัวแปร — คลิกแถวเพื่อเปลี่ยนตัวแปรหลักด้านบน */}

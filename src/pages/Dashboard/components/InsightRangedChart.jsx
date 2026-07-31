@@ -19,7 +19,7 @@ const HighchartsReact =
   HighchartsReactModule.default ||
   HighchartsReactModule;
 
-export default function InsightRangedChart({ datastream, from, to }) {
+export default function InsightRangedChart({ datastream, from, to, color }) {
   const theme = useTheme();
   const { text, background, divider, primary } = theme.palette;
   const { rows, fetching, error } = useObservationsRange(
@@ -30,6 +30,8 @@ export default function InsightRangedChart({ datastream, from, to }) {
 
   const unit = datastream?.unitOfMeasurement?.symbol || "";
   const varName = datastream?.ObservedProperty?.name || datastream?.name || "";
+  // สีประจำตัวของตัวแปรนี้ — ถ้าไม่ได้ระบุมา fallback เป็นสี primary ของธีมเดิม
+  const seriesColor = color || primary.main;
 
   const cardSx = {
     border: `1px solid ${divider}`,
@@ -72,10 +74,16 @@ export default function InsightRangedChart({ datastream, from, to }) {
     },
     plotOptions: {
       area: {
-        color: primary.main,
-        fillOpacity: 0.15,
+        color: seriesColor,
+        fillColor: {
+          linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+          stops: [
+            [0, `${seriesColor}40`],
+            [1, `${seriesColor}03`],
+          ],
+        },
         lineWidth: 1.75,
-        marker: { enabled: rows.length < 60, radius: 2.5, fillColor: primary.main },
+        marker: { enabled: rows.length < 60, radius: 2.5, fillColor: seriesColor },
       },
     },
     series: [
@@ -88,9 +96,20 @@ export default function InsightRangedChart({ datastream, from, to }) {
 
   return (
     <Box sx={cardSx}>
-      <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary, mb: 0.25 }}>
-        {varName}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.25 }}>
+        <Box
+          sx={{
+            width: 9,
+            height: 9,
+            borderRadius: "50%",
+            bgcolor: seriesColor,
+            flexShrink: 0,
+          }}
+        />
+        <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
+          {varName}
+        </Typography>
+      </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         {unit ? `หน่วย: ${unit}` : "แนวโน้มข้อมูลย้อนหลัง"} · {rows.length} จุดข้อมูล
       </Typography>
@@ -112,7 +131,15 @@ export default function InsightRangedChart({ datastream, from, to }) {
             ไม่มีข้อมูลในช่วงเวลาที่เลือก
           </Typography>
         ) : (
-          <Box sx={{ width: "100%" }}>
+          // [แก้บัค] เดียวกับ WindRoseChart.jsx — บังคับ unmount/mount กราฟใหม่
+          // เสมอทุกครั้งที่ query เปลี่ยน (datastream + from/to) แทนที่จะพึ่ง
+          // chart.update() ของ highcharts-react-official ซึ่งบางครั้งไม่ repaint
+          // ให้ถูกต้องถ้า React batch การเปลี่ยน loading -> โหลดเสร็จเป็น commit
+          // เดียว จนกราฟไม่เคย unmount ระหว่างเปลี่ยนช่วงเวลาเลย
+          <Box
+            key={`${datastream?.["@iot.id"]}-${from}-${to}`}
+            sx={{ width: "100%" }}
+          >
             <HighchartsReact highcharts={Highcharts} options={chartOptions} />
           </Box>
         )}

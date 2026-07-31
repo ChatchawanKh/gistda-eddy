@@ -1,11 +1,8 @@
 // src/pages/Dashboard/components/WindRoseChart.jsx
-// กราฟลม — แสดงทั้ง "ทิศทาง" (16 ทิศรอบเข็มทิศ) และ "ความเร็ว" (ไล่สีตามช่วง
-// ความเร็ว ซ้อนทับกันในแต่ละทิศ) พร้อมกันในภาพเดียว
-//
-// ปรับตามคำขอผู้ใช้ให้เป็น "Radar/Spider Chart" จริง ๆ: ใช้ Highcharts polar
-// area chart (chart.polar + type: "area") แทน polar column (แท่ง/wedge) เดิม
-// ผลลัพธ์คือรูปหลายเหลี่ยมซ้อนกันแบบ radar ทั่วไป แต่ยังคง stacking แบบ
-// สัดส่วน (normal) ไว้ ทำให้แต่ละทิศยังอ่านสัดส่วนความเร็วลมได้ครบเหมือนเดิม
+// Wind Rose Chart แบบมาตรฐาน — วงกลมเข็มทิศ 16 ทิศ แสดงทั้ง "ทิศทาง" (มุมรอบ
+// วง) และ "ความเร็ว" (สีที่ไล่ตามช่วงความเร็ว ซ้อนทับกันเป็นแท่งในแต่ละทิศ)
+// พร้อมกันในภาพเดียว ตามรูปแบบมาตรฐานของ Highcharts wind rose: polar stacked
+// column chart (chart.polar + type: "column" + plotOptions.column.stacking)
 //
 // ต้องการ Datastream สองตัว: ความเร็วลม + ทิศทางลม ของสถานีเดียวกัน โดยจับคู่
 // ข้อมูลด้วย phenomenonTime ที่ตรงกัน (ดู buildWindRoseMatrix ใน insightHelpers)
@@ -39,6 +36,42 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   const theme = useTheme();
   const { text, background, divider } = theme.palette;
 
+  // [แก้บัค] "เปลี่ยนช่วงเวลาแล้ว Wind Rose ไม่แสดงผล จนกว่าจะเปิด/ปิด Full
+  // Screen ก่อน" — ต้นเหตุจริงคือ: เวลา fetch ของความเร็ว+ทิศทางลมเสร็จเร็ว
+  // พอ (เช่นโหลดไว หรือมี cache) React จะ batch การเปลี่ยนสถานะ
+  // "กำลังโหลด -> โหลดเสร็จ" ให้เกิดใน commit เดียว ทำให้ Box ที่ห่อ
+  // <HighchartsReact> "ไม่เคย unmount" ระหว่างเปลี่ยนช่วงเวลาเลย (เพราะทั้งก่อน
+  // และหลังคือกราฟที่ mount ค้างอยู่ตำแหน่งเดิม) — highcharts-react-official
+  // จึงเลือกทาง "chart.update(options)" กับ instance เดิมแทนที่จะสร้างกราฟ
+  // ใหม่ ซึ่งกราฟ polar + stacked column แบบนี้ไม่ repaint ให้ถูกต้องจนกว่าจะมี
+  // event resize จากภายนอกมา force reflow (แบบที่ปุ่ม Full Screen บังเอิญทำให้)
+  //
+  // ทางแก้ที่ตรงจุดที่สุดคือบังคับให้ React "ทิ้งของเดิม สร้างกราฟใหม่เสมอ"
+  // ทุกครั้งที่ query เปลี่ยน แทนที่จะพึ่งพา update() ของ Highcharts — ทำโดยตั้ง
+  // key ของ Box ที่ห่อ HighchartsReact ให้ผูกกับ datastream + from/to (ดูตรง
+  // JSX ด้านล่าง) เมื่อ key เปลี่ยน React จะ unmount ของเก่า + mount กราฟใหม่
+  // เสมอ รับประกันว่ากราฟจะถูกวาดใหม่ทั้งหมดถูกต้องทุกครั้ง ไม่ว่า loading state
+  // จะถูก batch หายไปหรือไม่ก็ตาม
+  //
+  // ส่วน ResizeObserver ด้านล่างนี้เก็บไว้เป็นตาข่ายนิรภัยเสริม สำหรับกรณี
+  // container เปลี่ยนขนาดจากสาเหตุอื่น (เช่น sidebar ย่อ/ขยาย) หลังกราฟ mount
+  // ไปแล้ว ไม่ใช่ตัวแก้บัคหลักของเคสนี้
+  const chartRef = React.useRef(null);
+  const resizeObserverRef = React.useRef(null);
+  const chartContainerRef = React.useCallback((node) => {
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+    if (node && typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        chartRef.current?.chart?.reflow();
+      });
+      observer.observe(node);
+      resizeObserverRef.current = observer;
+    }
+  }, []);
+
   const {
     rows: speedRows,
     fetching: fetchingSpeed,
@@ -54,6 +87,21 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   const error = errorSpeed || errorDir;
   const unit = speedDatastream?.unitOfMeasurement?.symbol || "";
 
+  React.useEffect(() => {
+    if (!chartRef.current?.chart) return undefined;
+    // reflow ทันที + อีกครั้งหลังจากนั้น เผื่อกรณี container กำลังอยู่ระหว่าง
+    // CSS transition (เช่น Popover ของ DateRangePickerModern กำลังปิดตัวลง)
+    // ตอนที่กราฟ mount พอดี ทำให้ reflow ครั้งแรก (rAF) วัดขนาดได้ไม่นิ่งจริง
+    const raf = requestAnimationFrame(() => chartRef.current?.chart?.reflow());
+    const t1 = setTimeout(() => chartRef.current?.chart?.reflow(), 320);
+    const t2 = setTimeout(() => chartRef.current?.chart?.reflow(), 700);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  });
+
   const rose = React.useMemo(() => {
     if (!speedRows.length || !dirRows.length) return null;
     const edges = computeSpeedBinEdges(speedRows);
@@ -67,7 +115,7 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
     borderRadius: `${theme.shape.borderRadius + 2}px`,
     bgcolor: background.paper,
     p: 2,
-    minHeight: 340,
+    minHeight: 420,
     display: "flex",
     flexDirection: "column",
   };
@@ -76,7 +124,7 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
     return (
       <Box sx={{ ...cardSx, alignItems: "center", justifyContent: "center", textAlign: "center" }}>
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: text.primary, mb: 0.5 }}>
-          Wind Rose — Radar Chart (ทิศทาง+ความเร็วลม)
+          Wind Rose Chart (ทิศทาง+ความเร็วลม)
         </Typography>
         <Typography sx={{ fontSize: 12, color: text.secondary, px: 2 }}>
           สถานีนี้ต้องมีทั้งตัวแปร "ความเร็วลม" และ "ทิศทางลม" จึงจะแสดงกราฟนี้ได้
@@ -93,15 +141,17 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   const chartOptions = rose && {
     chart: {
       polar: true,
-      type: "area",
+      type: "column",
       backgroundColor: "transparent",
-      height: 280,
+      height: 360,
       style: { fontFamily: theme.typography.fontFamily },
     },
     title: { text: undefined },
     credits: { enabled: false },
     exporting: EXPORTING_DEFAULTS,
-    pane: { size: "85%" },
+    // startAngle/endAngle = 0/360 บังคับให้ pane เป็นวงกลมเต็มวงเสมอ (ไม่ใช่
+    // เสี้ยววง) ขนาด 88% ให้วงกลมเต็มการ์ดใกล้เคียงตัวอย่างมาตรฐานของ Highcharts
+    pane: { size: "88%", startAngle: 0, endAngle: 360 },
     xAxis: {
       categories: COMPASS_SECTORS,
       tickmarkPlacement: "on",
@@ -110,6 +160,9 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
     },
     yAxis: {
       min: 0,
+      endOnTick: false,
+      showLastLabel: true,
+      title: { text: "ความถี่ (%)", style: { fontSize: "10.5px", color: text.secondary } },
       labels: { format: "{value}%", style: { fontSize: "10px", color: text.secondary } },
       gridLineColor: divider,
       reversedStacks: false,
@@ -122,18 +175,32 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
       style: { color: text.primary, fontSize: "12px" },
       valueDecimals: 1,
     },
+    // legend วางแนวนอนใต้กราฟ (ไม่ใช่ชิดขวาแบบตัวอย่างทางการ) เพราะการ์ดของ
+    // เราแคบกว่าเดโมเต็มหน้าเดิมมาก — ถ้าวาง legend ชิดขวาจะแย่งพื้นที่แนวนอน
+    // ไปมาก ทำให้วงกลม wind rose บีบแคบ ไม่กลมเท่าที่ควร วางไว้ใต้กราฟแทนจะ
+    // เหลือพื้นที่แนวนอนเต็มที่ให้วงกลม ทำให้ได้วงกลมที่ใหญ่และกลมสวยกว่า
     legend: {
       align: "center",
       verticalAlign: "bottom",
-      itemStyle: { fontSize: "11px", color: text.secondary },
+      layout: "horizontal",
+      itemStyle: { fontSize: "10.5px", color: text.secondary },
+      itemDistance: 10,
+      squareSymbol: true,
+      symbolHeight: 10,
+      symbolWidth: 10,
+      symbolRadius: 2,
     },
     plotOptions: {
-      area: {
+      series: {
         stacking: "normal",
-        fillOpacity: 0.55,
-        lineWidth: 1.5,
-        marker: { enabled: true, radius: 2.5, symbol: "circle", lineWidth: 0 },
-        states: { hover: { lineWidthPlus: 1 } },
+        shadow: false,
+        groupPadding: 0,
+        pointPlacement: "on",
+      },
+      column: {
+        pointPadding: 0,
+        borderWidth: 1,
+        borderColor: background.paper,
       },
     },
     series: rose.percentages.map((data, i) => ({
@@ -146,7 +213,7 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   return (
     <Box sx={cardSx}>
       <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary, mb: 0.25 }}>
-        Wind Rose — Radar Chart (ทิศทาง+ความเร็วลม)
+        Wind Rose Chart (ทิศทาง+ความเร็วลม)
       </Typography>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         {rose ? `จับคู่ข้อมูลได้ ${rose.matched} จุด` : "แนวโน้มทิศทางและความเร็วลม"}
@@ -169,8 +236,12 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
             ไม่มีข้อมูลความเร็ว/ทิศทางลมที่จับคู่กันได้ในช่วงเวลาที่เลือก
           </Typography>
         ) : (
-          <Box sx={{ width: "100%" }}>
-            <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+          <Box
+            key={`${speedDatastream?.["@iot.id"]}-${directionDatastream?.["@iot.id"]}-${from}-${to}`}
+            sx={{ width: "100%" }}
+            ref={chartContainerRef}
+          >
+            <HighchartsReact ref={chartRef} highcharts={Highcharts} options={chartOptions} />
           </Box>
         )}
       </Box>

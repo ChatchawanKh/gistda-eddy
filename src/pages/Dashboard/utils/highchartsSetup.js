@@ -2,11 +2,16 @@
 // ตั้งค่า Highcharts กลาง "ที่เดียว" ให้ทุกกราฟใน Dashboard ใช้ instance เดียวกัน
 // เปิดใช้งาน module ทางการของ Highcharts เอง แทนการเขียนปุ่ม Export/Fullscreen
 // เองทีละกราฟ ตามข้อกำหนด UX/UI ที่ให้ทุกกราฟมี Export (PNG/CSV) และ Fullscreen:
+//   - highcharts-more  -> จำเป็นสำหรับกราฟ polar/radar (chart.polar: true) —
+//     ถ้าไม่โหลด module นี้ Highcharts จะ "เพิกเฉย" ต่อ chart.polar เงียบ ๆ
+//     แล้ว fallback ไปวาดเป็นกราฟแท่งธรรมดา (ไม่ใช่วงกลม) โดยไม่ error ให้เห็น
+//     — WindRoseChart.jsx ต้องพึ่ง module นี้โดยตรง
 //   - exporting        -> ปุ่มเมนู (มุมขวาบนของกราฟ)
 //   - export-data      -> เพิ่มตัวเลือก "Download CSV" ในเมนู exporting
 //   - full-screen      -> เพิ่มตัวเลือก "View in full screen" ในเมนู exporting
 //   - heatmap          -> ใช้กับ HeatmapChartCard.jsx
 import Highcharts from "highcharts";
+import HighchartsMore from "highcharts/highcharts-more";
 import HighchartsExporting from "highcharts/modules/exporting";
 import HighchartsExportData from "highcharts/modules/export-data";
 import HighchartsFullScreen from "highcharts/modules/full-screen";
@@ -21,6 +26,7 @@ function initModule(mod) {
   if (typeof fn === "function") fn(Highcharts);
 }
 
+initModule(HighchartsMore);
 initModule(HighchartsExporting);
 initModule(HighchartsExportData);
 initModule(HighchartsFullScreen);

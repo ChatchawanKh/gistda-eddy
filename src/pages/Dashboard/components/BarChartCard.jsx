@@ -16,9 +16,19 @@ const HighchartsReact =
   HighchartsReactModule.default ||
   HighchartsReactModule;
 
-export default function BarChartCard({ rows, unit, variableName, loading }) {
+export default function BarChartCard({
+  rows,
+  unit,
+  variableName,
+  loading,
+  color,
+  datastreamId,
+  from,
+  to,
+}) {
   const theme = useTheme();
   const { text, background, divider, primary } = theme.palette;
+  const seriesColor = color || primary.main;
 
   const daily = React.useMemo(() => groupDailyAverage(rows), [rows]);
 
@@ -63,7 +73,17 @@ export default function BarChartCard({ rows, unit, variableName, loading }) {
       valueDecimals: 2,
     },
     plotOptions: {
-      column: { color: primary.main, borderRadius: 3, borderWidth: 0 },
+      column: {
+        color: {
+          linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+          stops: [
+            [0, seriesColor],
+            [1, `${seriesColor}99`],
+          ],
+        },
+        borderRadius: 3,
+        borderWidth: 0,
+      },
     },
     series: [
       {
@@ -75,9 +95,12 @@ export default function BarChartCard({ rows, unit, variableName, loading }) {
 
   return (
     <Box sx={cardSx}>
-      <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary, mb: 0.25 }}>
-        ค่าเฉลี่ยรายวัน — {variableName || "ตัวแปรหลัก"}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.25 }}>
+        <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: seriesColor, flexShrink: 0 }} />
+        <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
+          ค่าเฉลี่ยรายวัน — {variableName || "ตัวแปรหลัก"}
+        </Typography>
+      </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         {unit ? `หน่วย: ${unit}` : "แนวโน้มค่าเฉลี่ยต่อวัน"} · {daily.length} วัน
       </Typography>
@@ -89,7 +112,10 @@ export default function BarChartCard({ rows, unit, variableName, loading }) {
             ไม่มีข้อมูลในช่วงเวลาที่เลือก
           </Typography>
         ) : (
-          <Box sx={{ width: "100%" }}>
+          // [แก้บัค] เดียวกับ WindRoseChart.jsx — บังคับสร้างกราฟใหม่ทุกครั้งที่
+          // ตัวแปร/ช่วงเวลาเปลี่ยน แทนที่จะพึ่ง chart.update() ของ
+          // highcharts-react-official (ดูคอมเมนต์เต็มใน WindRoseChart.jsx)
+          <Box key={`${datastreamId}-${from}-${to}`} sx={{ width: "100%" }}>
             <HighchartsReact highcharts={Highcharts} options={chartOptions} />
           </Box>
         )}
