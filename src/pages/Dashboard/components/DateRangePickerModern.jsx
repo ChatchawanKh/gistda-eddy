@@ -52,15 +52,20 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
         startIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />}
         endIcon={<KeyboardArrowDownRoundedIcon sx={{ fontSize: 18 }} />}
         sx={{
-          textTransform: "none",
           fontSize: 13,
-          fontWeight: 600,
-          color: text.primary,
-          borderColor: divider,
+          color: text.secondary,
+          border: `1px solid ${divider}`,
+          // ml: 0.25,
+          // mr: 0.5,
+          textTransform: "none",
+          // fontSize: 13,
+          fontWeight: 400,
+          // color: text.primary,
+          // borderColor: divider,
           bgcolor: background.paper,
           px: 1.5,
           py: 0.85,
-          borderRadius: `${theme.shape.borderRadius + 4}px`,
+          borderRadius: 0.5,
           whiteSpace: "nowrap",
           "&:hover": { borderColor: primary.main, bgcolor: background.paper },
         }}

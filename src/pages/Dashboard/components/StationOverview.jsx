@@ -69,17 +69,22 @@ export default function StationOverview({ things, loading, error }) {
   // (ฟังก์ชันเดิมของหน้า "สถานีตรวจวัด")
   const [viewMode, setViewMode] = React.useState("cards");
 
-  const handleSelectStation = React.useCallback(
-    (id) => {
-      const next = new URLSearchParams(searchParams);
-      if (id) next.set("station", id);
-      else next.delete("station");
-      // เปลี่ยนสถานีแล้วให้เลือกตัวแปรแรกใหม่เสมอ (เคลียร์ ds เดิมทิ้ง)
+const handleSelectStation = React.useCallback(
+  (id) => {
+    const currentStation = searchParams.get("station") || "";
+    const next = new URLSearchParams(searchParams);
+
+    if (id) next.set("station", id);
+    else next.delete("station");
+
+    if (id !== currentStation) {
       next.delete("ds");
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
+    }
+
+    setSearchParams(next, { replace: true });
+  },
+  [searchParams, setSearchParams]
+);
 
   const handleSelectDatastream = React.useCallback(
     (ds) => {
@@ -236,7 +241,7 @@ export default function StationOverview({ things, loading, error }) {
           ไม่ต้องเลือกสถานีก่อน (แทนที่หน้า "กราฟข้อมูลตามเวลา" เดิม) */}
       <Box
         sx={{
-          bgcolor: background.paper,
+          bgcolor: "background.paper",
           borderRadius: `${theme.shape.borderRadius + 4}px`,
           border: `1px solid ${divider}`,
           p: { xs: 1.5, sm: 2 },

@@ -32,6 +32,10 @@ export default function StationDatastreamsTable({
   const loc = thing.Locations?.[0]?.location?.coordinates;
   const interactive = typeof onSelectDatastream === "function";
 
+  console.log("[ StationDataStreamsTable: THING ]", thing);
+  
+  
+
   return (
     <TableContainer
       sx={{

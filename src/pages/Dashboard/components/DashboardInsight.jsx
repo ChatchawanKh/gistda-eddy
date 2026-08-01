@@ -4,22 +4,23 @@
 // (Single Page Dashboard) แทนที่จะแยกเป็นหน้า "ภาพรวมสถานี" กับ "อินไซต์ข้อมูล"
 // เหมือนเดิม โครงสร้างของหน้า (บนลงล่าง):
 //
+//   0) แถบ Header + Query (sticky) — ชื่อหน้า + ตัวควบคุมหลักทั้งหมด
+//      (ค้นหาตัวแปร / เลือกสถานี / ช่วงเวลา / ล้างตัวกรอง) ค้างอยู่ด้านบน
+//      เสมอขณะเลื่อนหน้า เพื่อให้สลับมุมมองได้สะดวกโดยไม่ต้องเลื่อนกลับขึ้นไป
 //   1) Insight Summary  — แบนเนอร์ "Latest Data" (อ้างอิงวันที่ล่าสุดที่มีข้อมูล
 //      จริงในระบบ ไม่ใช่วันที่ปัจจุบัน) + การ์ด KPI (จำนวน/ค่าเฉลี่ย/สูงสุด/
 //      ต่ำสุด/แนวโน้ม) ของตัวแปรหลักที่กำลังดูอยู่
-//   2) แถบเลือกช่วงเวลากลาง (DateRangePickerModern) — ควบคุมทุกกราฟ +
-//      Insight Summary ในหน้านี้พร้อมกันแบบ real-time ไม่ต้อง reload
-//   3) ภาพรวมระบบ — จัด 2 คอลัมน์แยก 2 หมวด: "ภาพรวมระบบ" (จำนวนสถานี/ตัวแปร/
+//   2) ภาพรวมระบบ — จัด 2 คอลัมน์แยก 2 หมวด: "ภาพรวมระบบ" (จำนวนสถานี/ตัวแปร/
 //      ความสดใหม่ของข้อมูล) ฝั่งซ้าย และ "สถานะสถานีทั้งระบบ" (Donut) ฝั่งขวา
 //      ไม่ผูกกับสถานีที่เลือก แสดงเสมอ
-//   4) ตัวเลือกสถานี (แผนที่ + dropdown + ค้นหาตัวแปรโดยตรง)
-//   5) เมื่อเลือกสถานีแล้ว: Multi-chart grid ของสถานีนั้น จัด layout ตาม
+//   3) แผนที่เลือกสถานี — ไม่ sticky (กินพื้นที่เยอะ) เลื่อนผ่านได้ตามปกติ
+//   4) เมื่อเลือกสถานีแล้ว: Multi-chart grid ของสถานีนั้น จัด layout ตาม
 //      ความสำคัญของข้อมูล (Priority-based Layout) — ถ้าสถานีมีข้อมูลลม
 //      Wind Rose Chart จะอยู่ตำแหน่งแรก/โดดเด่นที่สุดของกริดเสมอ
 //      ตามด้วย Time Series, Bar Chart รายวัน, Heatmap รายชั่วโมง แล้วตามด้วย
 //      กราฟย่อย (small multiples) ของตัวแปรอื่น ๆ ทั้งหมด และตารางค่าล่าสุด
 import * as React from "react";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -58,13 +59,20 @@ import HeatmapChartCard from "./HeatmapChartCard";
 import InsightSummaryBar from "./InsightSummaryBar";
 import DateRangePickerModern from "./DateRangePickerModern";
 import { useObservationsRange } from "../hooks/useObservationsRange";
-import { flattenDatastreams, timeAgoLabel, hasObservationData } from "../utils/formatters";
+import {
+  flattenDatastreams,
+  timeAgoLabel,
+  hasObservationData,
+} from "../utils/formatters";
 import {
   findDatastreamByKeywords,
   WIND_SPEED_KEYWORDS,
   WIND_DIRECTION_KEYWORDS,
 } from "../utils/insightHelpers";
-import { summarizeObservations, findLatestAvailableDate } from "../utils/insightSummary";
+import {
+  summarizeObservations,
+  findLatestAvailableDate,
+} from "../utils/insightSummary";
 import { buildDatePresets } from "../utils/dateRangePresets";
 import { getChartColor } from "../utils/chartColors";
 
@@ -81,12 +89,47 @@ export default function DashboardInsight({ things, loading, error }) {
 
   // วันที่ล่าสุดที่มีข้อมูลจริงในระบบ — ใช้เป็นฐานของทุก preset ช่วงเวลา และ
   // แสดงในแบนเนอร์ "Latest Data" (ไม่ใช้วันที่ปัจจุบันของเครื่องผู้ใช้)
-  const latestAvailableDate = React.useMemo(() => findLatestAvailableDate(things), [things]);
+  const latestAvailableDate = React.useMemo(
+    () => findLatestAvailableDate(things),
+    [things],
+  );
+
+  {
+    /* style กลางที่ใช้ร่วมกันทั้ง Autocomplete/TextField และ Select เพื่อให้
+    หน้าตาตรงกับปุ่ม DateRangePickerModern ทุกจุด (bgcolor, border, radius,
+    font) — override เฉพาะจุดทับ global MuiOutlinedInput ของ theme.jsx */
+  }
+  const filterFieldSx = {
+    bgcolor: background.paper,
+    borderRadius: 0.5,
+    "& .MuiOutlinedInput-root": {
+      bgcolor: background.paper,
+      borderRadius: 0.5,
+      fontSize: 13,
+    },
+    "& .MuiOutlinedInput-notchedOutline": {
+      borderColor: divider,
+    },
+    // เจาะจงที่ .MuiOutlinedInput-root:hover ตรง ๆ (แทน "&:hover" เฉย ๆ)
+    // ให้ specificity เท่ากับ override เดิมใน theme.jsx ที่ผูกไว้จุดเดียวกัน
+    "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+      borderColor: primary.main,
+    },
+    "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      borderColor: primary.main,
+      borderWidth: 1,
+    },
+    "& .MuiInputLabel-root": {
+      fontSize: 13,
+    },
+  };
 
   // ช่วงเวลากลางของทั้งหน้า — default "7 วันล่าสุด" นับจากวันที่ล่าสุดที่มี
   // ข้อมูลจริง ตั้งค่าเริ่มต้นแค่ครั้งเดียวหลังรู้ latestAvailableDate แล้ว
   // เพื่อไม่ให้ override ช่วงเวลาที่ผู้ใช้เลือกเองในภายหลัง
-  const [range, setRange] = React.useState(() => buildDatePresets(new Date())[2].range);
+  const [range, setRange] = React.useState(
+    () => buildDatePresets(new Date())[2].range,
+  );
   const didInitRange = React.useRef(false);
   React.useEffect(() => {
     if (didInitRange.current || !latestAvailableDate) return;
@@ -96,13 +139,19 @@ export default function DashboardInsight({ things, loading, error }) {
 
   const handleSelectStation = React.useCallback(
     (id) => {
+      const currentStation = searchParams.get("station") || "";
       const next = new URLSearchParams(searchParams);
+
       if (id) next.set("station", id);
       else next.delete("station");
-      next.delete("ds");
+
+      if (id !== currentStation) {
+        next.delete("ds");
+      }
+
       setSearchParams(next, { replace: true });
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   const handleSelectDatastream = React.useCallback(
@@ -112,7 +161,7 @@ export default function DashboardInsight({ things, loading, error }) {
       next.set("ds", String(ds["@iot.id"]));
       setSearchParams(next, { replace: true });
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   const handleJumpToDatastream = React.useCallback(
@@ -123,17 +172,19 @@ export default function DashboardInsight({ things, loading, error }) {
       next.set("ds", String(ds["@iot.id"]));
       setSearchParams(next, { replace: true });
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   // เมื่อเปลี่ยนสถานี (หรือข้อมูลโหลดเสร็จ) และยังไม่มีตัวแปรที่ valid อยู่ใน
   // URL ให้ default ไปที่ตัวแปรแรกของสถานีนั้นโดยอัตโนมัติ
   React.useEffect(() => {
     if (!selectedStationId) return;
-    const thing = things.find((t) => String(t["@iot.id"]) === String(selectedStationId));
+    const thing = things.find(
+      (t) => String(t["@iot.id"]) === String(selectedStationId),
+    );
     const dsList = thing?.Datastreams || [];
     const stillValid = dsList.some(
-      (d) => String(d["@iot.id"]) === String(selectedDatastreamId)
+      (d) => String(d["@iot.id"]) === String(selectedDatastreamId),
     );
     if (!stillValid) {
       const firstDs = dsList.find(hasObservationData) || dsList[0];
@@ -149,18 +200,21 @@ export default function DashboardInsight({ things, loading, error }) {
   const queryableDatastreams = datastreams.filter(hasObservationData);
 
   const selectedThing = things.find(
-    (t) => String(t["@iot.id"]) === String(selectedStationId)
+    (t) => String(t["@iot.id"]) === String(selectedStationId),
   );
   const stationDatastreams = selectedThing?.Datastreams || [];
   const primaryDatastream = stationDatastreams.find(
-    (ds) => String(ds["@iot.id"]) === String(selectedDatastreamId)
+    (ds) => String(ds["@iot.id"]) === String(selectedDatastreamId),
   );
 
   // ตัวแปรลม (ถ้ามี) — ใช้ทำ Wind Rose และตัดออกจากรายการ "กราฟย่อยอื่น ๆ"
-  const speedDatastream = findDatastreamByKeywords(stationDatastreams, WIND_SPEED_KEYWORDS);
+  const speedDatastream = findDatastreamByKeywords(
+    stationDatastreams,
+    WIND_SPEED_KEYWORDS,
+  );
   const directionDatastream = findDatastreamByKeywords(
     stationDatastreams,
-    WIND_DIRECTION_KEYWORDS
+    WIND_DIRECTION_KEYWORDS,
   );
   const hasWind = Boolean(speedDatastream || directionDatastream);
 
@@ -169,7 +223,7 @@ export default function DashboardInsight({ things, loading, error }) {
   const otherDatastreams = stationDatastreams.filter(
     (ds) =>
       String(ds["@iot.id"]) !== String(primaryDatastream?.["@iot.id"]) &&
-      String(ds["@iot.id"]) !== String(directionDatastream?.["@iot.id"])
+      String(ds["@iot.id"]) !== String(directionDatastream?.["@iot.id"]),
   );
 
   // ดึงข้อมูลของตัวแปรหลักตามช่วงเวลากลาง — ใช้ทั้งกับ Insight Summary,
@@ -178,14 +232,27 @@ export default function DashboardInsight({ things, loading, error }) {
     rows: primaryRows,
     fetching: primaryFetching,
     error: primaryError,
-  } = useObservationsRange(primaryDatastream?.["@iot.id"], range.from, range.to);
+  } = useObservationsRange(
+    primaryDatastream?.["@iot.id"],
+    range.from,
+    range.to,
+  );
 
-  const primarySummary = React.useMemo(() => summarizeObservations(primaryRows), [primaryRows]);
+  const primarySummary = React.useMemo(
+    () => summarizeObservations(primaryRows),
+    [primaryRows],
+  );
   const primaryUnit = primaryDatastream?.unitOfMeasurement?.symbol || "";
-  const primaryName = primaryDatastream?.ObservedProperty?.name || primaryDatastream?.name || "";
+  const primaryName =
+    primaryDatastream?.ObservedProperty?.name || primaryDatastream?.name || "";
   // สีประจำตัวของตัวแปรหลักที่กำลังดูอยู่ — ใช้ร่วมกันทั้ง 3 กราฟ (Time Series,
   // Bar รายวัน, Heatmap) ของตัวแปรเดียวกัน เพื่อให้รู้ทันทีว่าเป็นชุดเดียวกัน
-  const primaryColor = getChartColor(primaryDatastream?.["@iot.id"], primary.main);
+  const primaryColor = getChartColor(
+    primaryDatastream?.["@iot.id"],
+    primary.main,
+  );
+
+  const noStations = things.length === 0;
 
   if (loading) {
     return (
@@ -202,12 +269,6 @@ export default function DashboardInsight({ things, loading, error }) {
     return <Alert severity="error">{error}</Alert>;
   }
 
-  const noStations = things.length === 0;
-
-  // ความสูงร่วมของทั้ง 2 คอลัมน์ในโซนนี้ (การ์ด "ภาพรวมระบบ" ฝั่งซ้าย +
-  // การ์ด "สถานะสถานีทั้งระบบ" ฝั่งขวา) ให้เท่ากันเป๊ะ ๆ เพื่อความสมมาตร
-  const CATEGORY_CARD_HEIGHT = 300;
-
   const overviewCards = [
     {
       label: "สถานีทั้งหมด",
@@ -223,7 +284,9 @@ export default function DashboardInsight({ things, loading, error }) {
     },
     {
       label: "ข้อมูลล่าสุด",
-      value: latestAvailableDate ? timeAgoLabel(latestAvailableDate) : "ไม่มีข้อมูล",
+      value: latestAvailableDate
+        ? timeAgoLabel(latestAvailableDate)
+        : "ไม่มีข้อมูล",
       icon: UpdateRoundedIcon,
       color: "#E8874A",
     },
@@ -231,134 +294,65 @@ export default function DashboardInsight({ things, loading, error }) {
 
   return (
     <>
+      {/* Title and Query Tools */}
       <Box
         sx={{
-          display: "flex",
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 1.5,
-          mb: 2,
+          position: "sticky",
+          top: 0,
+          zIndex: 1300,
+          bgcolor: "#fff",
+          pb: 1.5,
+          borderBottom: `1px solid ${divider}`,
         }}
       >
-        <Box>
-          <Typography sx={{ fontSize: 20, fontWeight: 500, color: text.head }}>
-            Dashboard
-          </Typography>
-          <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
-            สรุปภาพรวมและวิเคราะห์ข้อมูลเชิงลึกของทุกสถานีตรวจวัดในหน้าเดียว
-          </Typography>
-        </Box>
-
-        {/* แถบเลือกช่วงเวลากลาง — คุมทั้ง Insight Summary และทุกกราฟในหน้านี้ */}
-        <DateRangePickerModern
-          from={range.from}
-          to={range.to}
-          onChange={setRange}
-          anchorDate={latestAvailableDate}
-        />
-      </Box>
-
-      {/* 1) Insight Summary: Latest Data banner + KPI ของตัวแปรหลักที่เลือกอยู่ */}
-      <InsightSummaryBar
-        latestAvailableDate={latestAvailableDate}
-        summary={primarySummary}
-        unit={primaryUnit}
-        variableName={selectedThing ? `${selectedThing.name} · ${primaryName}` : primaryName}
-        loading={Boolean(primaryDatastream) && primaryFetching}
-        emptyMessage={
-          !selectedThing
-            ? "เลือกสถานีด้านล่างเพื่อดู Insight Summary ของตัวแปรที่ต้องการ"
-            : "ไม่มีข้อมูลของตัวแปรนี้ในช่วงเวลาที่เลือก"
-        }
-      />
-
-      {/* 2) ภาพรวมระบบ — จัดเป็น 2 คอลัมน์ แยก 2 หมวดชัดเจน:
-          ซ้าย  = "ภาพรวมระบบ" (จำนวนสถานี/ตัวแปร/ความสดใหม่ของข้อมูล เป็นลิสต์)
-          ขวา   = "สถานะสถานีทั้งระบบ" (Donut แยกตามความสดใหม่ของข้อมูล)
-          ทั้งสองคอลัมน์กว้างเท่ากัน (1fr 1fr) และสูงเท่ากัน (CATEGORY_CARD_HEIGHT) */}
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        {/* หมวดที่ 1: ภาพรวมระบบ */}
         <Box
           sx={{
-            height: { xs: "auto", md: CATEGORY_CARD_HEIGHT },
-            bgcolor: background.paper,
-            borderRadius: `${theme.shape.borderRadius + 4}px`,
-            border: `1px solid ${divider}`,
-            p: 2.5,
             display: "flex",
-            flexDirection: "column",
+            alignItems: { xs: "flex-start", sm: "center" },
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 1.5,
+            py: 1.5,
+            mb: 2,
           }}
         >
-          <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary, mb: 0.25 }}>
-            ภาพรวมระบบ
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
-            จำนวนสถานีและตัวแปรที่ตรวจวัดทั้งหมดในระบบ
-          </Typography>
-
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-evenly" }}>
-            {overviewCards.map((c, i) => (
-              <React.Fragment key={c.label}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.75, py: 0.75 }}>
-                  <Box
-                    sx={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: "14px",
-                      bgcolor: `${c.color}14`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <c.icon sx={{ fontSize: 21, color: c.color }} />
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 19, fontWeight: 800, color: text.primary, lineHeight: 1.2 }}>
-                      {c.value}
-                    </Typography>
-                    <Typography sx={{ fontSize: 12, color: text.secondary }}>{c.label}</Typography>
-                  </Box>
-                </Box>
-                {i < overviewCards.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
+          <Box>
+            <Typography
+              sx={{ fontSize: 20, fontWeight: 500, color: text.head }}
+            >
+              Dashboard
+            </Typography>
+            <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
+              สรุปภาพรวมและวิเคราะห์ข้อมูลเชิงลึกของทุกสถานีตรวจวัดในหน้าเดียว
+            </Typography>
           </Box>
         </Box>
 
-        {/* หมวดที่ 2: สถานะสถานีทั้งระบบ */}
-        <DonutChartCard things={things} minHeight={CATEGORY_CARD_HEIGHT} />
-      </Box>
-
-      {/* 3) เลือกสถานี — ค้นหาตัวแปรโดยตรง + dropdown + แผนที่ */}
-      <Box
-        sx={{
-          bgcolor: background.paper,
-          borderRadius: `${theme.shape.borderRadius + 4}px`,
-          border: `1px solid ${divider}`,
-          p: { xs: 1.5, sm: 2 },
-          mb: 3,
-        }}
-      >
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, mb: 2 }}>
+        {/* แถบ Query หลัก — ค้นหาตัวแปร / เลือกสถานี / ช่วงเวลา / ล้างตัวกรอง
+            ควบคุมทุกกราฟและ Insight Summary ในหน้านี้พร้อมกันแบบ real-time */}
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 1.25,
+            bgcolor: background.paper,
+            border: `1px solid ${divider}`,
+            borderRadius: `${theme.shape.borderRadius + 4}px`,
+            p: { xs: 1.25, sm: 1.5 },
+          }}
+        >
           <Autocomplete
             size="small"
-            sx={{ minWidth: 280, flex: 1 }}
+            sx={{ minWidth: 260, flex: 1, ...filterFieldSx }}
             options={queryableDatastreams}
-            getOptionLabel={(ds) => `${ds.thingName} · ${ds.ObservedProperty?.name || ds.name}`}
+            getOptionLabel={(ds) =>
+              `${ds.thingName} · ${ds.ObservedProperty?.name || ds.name}`
+            }
             groupBy={(ds) => ds.thingName}
             value={
               queryableDatastreams.find(
-                (ds) => String(ds["@iot.id"]) === String(selectedDatastreamId)
+                (ds) => String(ds["@iot.id"]) === String(selectedDatastreamId),
               ) || null
             }
             onChange={(_, ds) => handleJumpToDatastream(ds)}
@@ -369,18 +363,32 @@ export default function DashboardInsight({ things, loading, error }) {
                 label="ค้นหาตัวแปร/สารที่ต้องการดูโดยตรง (ทุกสถานี)"
                 InputProps={{
                   ...params.InputProps,
-                  startAdornment: <SearchRoundedIcon sx={{ fontSize: 17, color: text.secondary, ml: 0.25, mr: 0.5 }} />,
+                  startAdornment: (
+                    <SearchRoundedIcon
+                      sx={{
+                        fontSize: 17,
+                        color: text.secondary,
+                        ml: 0.25,
+                        mr: 0.5,
+                      }}
+                    />
+                  ),
                 }}
               />
             )}
           />
 
-          <FormControl size="small" sx={{ minWidth: 240 }} disabled={noStations}>
+          <FormControl
+            size="small"
+            sx={{ minWidth: 220, ...filterFieldSx }}
+            disabled={noStations}
+          >
             <InputLabel>เลือกสถานีที่ต้องการดู</InputLabel>
             <Select
               label="เลือกสถานีที่ต้องการดู"
               value={selectedStationId}
               onChange={(e) => handleSelectStation(e.target.value)}
+              sx={{ fontSize: 13 }}
             >
               <MenuItem value="">ทั้งหมด ({things.length} สถานี)</MenuItem>
               {things.map((t) => (
@@ -390,6 +398,14 @@ export default function DashboardInsight({ things, loading, error }) {
               ))}
             </Select>
           </FormControl>
+
+          <DateRangePickerModern
+            from={range.from}
+            to={range.to}
+            onChange={setRange}
+            anchorDate={latestAvailableDate}
+          />
+
           <Tooltip title="ล้างตัวกรอง">
             <span>
               <IconButton
@@ -402,285 +418,445 @@ export default function DashboardInsight({ things, loading, error }) {
             </span>
           </Tooltip>
         </Box>
-
-        <StationsMap
-          things={things}
-          selectedStationId={selectedStationId}
-          onSelectStation={handleSelectStation}
-        />
       </Box>
 
-      {/* 4) รายละเอียด + Multi-chart Dashboard ของสถานีที่เลือก */}
-      {selectedThing ? (
-        <Fade in key={selectedThing["@iot.id"]} timeout={280}>
-          <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5 }}>
-              <IconButton size="small" onClick={() => handleSelectStation("")}>
-                <ArrowBackRoundedIcon fontSize="small" />
-              </IconButton>
-              <Typography
-                onClick={() => handleSelectStation("")}
-                sx={{
-                  fontSize: 13,
-                  color: text.secondary,
-                  cursor: "pointer",
-                  "&:hover": { color: theme.palette.primary.main },
-                }}
-              >
-                กลับไปดูทุกสถานี
-              </Typography>
-            </Box>
-
-            {primaryError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {primaryError}
-              </Alert>
-            )}
-
-            {/* โซน "รายละเอียดตัวแปรที่กำลังดู" — ห่อด้วยกรอบ/พื้นหลังโทนสี
-                primary อ่อน ๆ ให้แยกออกจากโซน "ตัวแปรอื่น ๆ" ด้านล่างอย่าง
-                ชัดเจน (ทั้งสีพื้นหลัง กรอบ และหัวข้อ) ไม่ใช่แค่ระยะห่างเฉย ๆ
-                ภายในจัด Priority-based layout: Wind Rose ก่อนเสมอถ้าสถานีมี
-                ข้อมูลลม เพราะเป็นภาพรวมที่อ่านง่ายและสำคัญที่สุด */}
-            <Box
-              sx={{
-                border: `1px solid ${primary.main}33`,
-                bgcolor: `${primary.main}06`,
-                borderRadius: `${theme.shape.borderRadius + 4}px`,
-                p: { xs: 1.5, sm: 2.5 },
-                mb: 3,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.25 }}>
-                <ShowChartRoundedIcon sx={{ fontSize: 18, color: primary.main }} />
-                <Typography sx={{ fontSize: 14, fontWeight: 700, color: primary.main }}>
-                  {primaryDatastream
-                  ? `${selectedThing.name} · ${primaryName}${
-                      primaryUnit ? ` (${primaryUnit})` : ""
-                    }`
-                  : ""}
-                </Typography>
-              </Box>
-              <Typography sx={{ fontSize: 12, color: text.secondary, mb: 2 }}>
-                {primaryDatastream
-                  ? `${selectedThing.name} · ${primaryName}${
-                      primaryUnit ? ` (${primaryUnit})` : ""
-                    } — คลิกแถวในตารางด้านล่างเพื่อเปลี่ยนตัวแปร`
-                  : "เลือกตัวแปรจากตารางด้านล่างเพื่อดูรายละเอียด"}
-              </Typography>
-
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                  gap: 2,
-                }}
-              >
-                {hasWind && (
-                  <WindRoseChart
-                    speedDatastream={speedDatastream}
-                    directionDatastream={directionDatastream}
-                    from={range.from}
-                    to={range.to}
-                  />
-                )}
-                
-                <InsightRangedChart
-                  datastream={primaryDatastream}
-                  from={range.from}
-                  to={range.to}
-                  color={primaryColor}
-                />
-                <BarChartCard
-                  rows={primaryRows}
-                  unit={primaryUnit}
-                  variableName={primaryName}
-                  loading={primaryFetching}
-                  color={primaryColor}
-                  datastreamId={primaryDatastream?.["@iot.id"]}
-                  from={range.from}
-                  to={range.to}
-                />
-                <HeatmapChartCard
-                  rows={primaryRows}
-                  unit={primaryUnit}
-                  variableName={primaryName}
-                  loading={primaryFetching}
-                  color={primaryColor}
-                  datastreamId={primaryDatastream?.["@iot.id"]}
-                  from={range.from}
-                  to={range.to}
-                />
-              </Box>
-            </Box>
-
-            {/* โซน "ตัวแปรอื่น ๆ" — แยกออกจากโซนรายละเอียดด้านบนอย่างชัดเจน
-                ด้วยหัวข้อ + คำอธิบายของตัวเอง (ไม่มีกรอบสีไฮไลต์ เพื่อให้ดู
-                เป็นข้อมูลรอง ไม่ใช่ตัวแปรหลักที่กำลังพิจารณาอยู่) */}
-            {otherDatastreams.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.25 }}>
-                  <GridViewRoundedIcon sx={{ fontSize: 17, color: text.secondary }} />
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: text.primary }}>
-                    ตัวแปรอื่นในสถานีนี้ ({otherDatastreams.length})
-                  </Typography>
-                </Box>
-                <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1.5 }}>
-                  ภาพรวมแบบย่อของตัวแปรอื่น ๆ ที่สถานีนี้ตรวจวัด นอกเหนือจากตัวแปรที่แสดงรายละเอียดอยู่ด้านบน
-                  — คลิกแถวในตารางด้านล่างเพื่อสลับไปดูรายละเอียดของตัวแปรนั้นแทน
-                </Typography>
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                    gap: 2,
-                  }}
-                >
-                  {otherDatastreams.map((ds) => (
-                    <InsightRangedChart
-                      key={ds["@iot.id"]}
-                      datastream={ds}
-                      from={range.from}
-                      to={range.to}
-                      color={getChartColor(ds["@iot.id"], primary.main)}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {/* ตารางค่าล่าสุดของทุกตัวแปร — คลิกแถวเพื่อเปลี่ยนตัวแปรหลักด้านบน */}
-            <StationDatastreamsTable
-              thing={selectedThing}
-              selectedDatastreamId={selectedDatastreamId}
-              onSelectDatastream={handleSelectDatastream}
-            />
-          </Box>
-        </Fade>
-      ) : noStations ? (
+      <Box sx={{ pt: 2 }}>
+        {/* 1) Insight Summary: Latest Data banner + KPI ของตัวแปรหลักที่เลือกอยู่ */}
         <Box
           sx={{
-            border: `1px dashed ${divider}`,
+            bgcolor: alpha(theme.palette.text.primary, 0.03),
             borderRadius: `${theme.shape.borderRadius + 4}px`,
-            p: 5,
-            textAlign: "center",
+            border: `1px solid ${divider}`,
+            p: { xs: 1.5, sm: 2 },
+            mb: 3,
           }}
         >
-          <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
-            ยังไม่มีสถานีตรวจวัดในระบบ
-          </Typography>
+          <InsightSummaryBar
+            latestAvailableDate={latestAvailableDate}
+            summary={primarySummary}
+            unit={primaryUnit}
+            variableName={
+              selectedThing
+                ? `${selectedThing.name} · ${primaryName}`
+                : primaryName
+            }
+            loading={Boolean(primaryDatastream) && primaryFetching}
+            emptyMessage={
+              !selectedThing
+                ? "เลือกสถานีที่สนใจ เพื่อดูข้อมูลสรุป"
+                : "ไม่มีข้อมูลของตัวแปรนี้ในช่วงเวลาที่เลือก"
+            }
+          />
         </Box>
-      ) : (
-        <>
+
+        {/* 2) ภาพรวมระบบ — Tag */}
+
+        {/* 3) แผนที่เลือกสถานี — ไม่ sticky เพราะกินพื้นที่มาก เลื่อนผ่านได้ตามปกติ */}
+        <Box
+          sx={{
+            bgcolor: background.paper,
+            borderRadius: `${theme.shape.borderRadius + 4}px`,
+            border: `1px solid ${divider}`,
+            p: { xs: 1.5, sm: 2 },
+            mb: 3,
+          }}
+        >
           <Box
             sx={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
               flexWrap: "wrap",
+              alignItems: "center",
               gap: 1,
               mb: 1.5,
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <GridViewRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}>
-                รายชื่อสถานีทั้งหมด
-              </Typography>
-            </Box>
-
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={viewMode}
-              onChange={(_, v) => v && setViewMode(v)}
-            >
-              <ToggleButton value="cards" sx={{ fontSize: 12, px: 1.25, py: 0.25 }}>
-                <ViewModuleRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                การ์ดสรุป
-              </ToggleButton>
-              <ToggleButton value="table" sx={{ fontSize: 12, px: 1.25, py: 0.25 }}>
-                <TableRowsRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                ตารางละเอียด
-              </ToggleButton>
-            </ToggleButtonGroup>
+            {/* <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: text.secondary,
+              mr: 0.5,
+            }}
+          >
+            ภาพรวมระบบ:
+          </Typography> */}
+            {overviewCards.map((c) => (
+              <Chip
+                key={c.label}
+                size="small"
+                icon={<c.icon sx={{ fontSize: "14px !important" }} />}
+                label={
+                  <Box
+                    component="span"
+                    sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}
+                  >
+                    <Box
+                      component="span"
+                      sx={{ fontWeight: 400, opacity: 0.85 }}
+                    >
+                      {c.label}
+                    </Box>
+                    <Box component="span" sx={{ fontWeight: 500 }}>
+                      {c.value}
+                    </Box>
+                  </Box>
+                }
+                sx={{
+                  height: 28,
+                  borderRadius: 999,
+                  bgcolor: alpha(primary.main, 0.1), // BLUE[500] @ 10% -> โทนฟ้าอ่อน
+                  color: primary.dark, // BLUE[700] -> ตัวอักษรน้ำเงินเข้ม อ่านง่าย
+                  "& .MuiChip-icon": { color: "inherit", ml: 1.25 },
+                  "& .MuiChip-label": { px: 1 },
+                }}
+              />
+            ))}
           </Box>
 
-          {viewMode === "table" ? (
-            things.map((t) => (
-              <Box key={t["@iot.id"]} sx={{ mb: 2 }}>
-                <StationDatastreamsTable thing={t} />
-              </Box>
-            ))
-          ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 2,
-              }}
-            >
-              {things.map((t) => {
-                const stationDs = t.Datastreams || [];
-                const latest = stationDs
-                  .map((ds) => ds.Observations?.[0]?.phenomenonTime)
-                  .filter(Boolean)
-                  .sort()
-                  .reverse()[0];
-                const isStale = latest
-                  ? Date.now() - new Date(latest).getTime() > STALE_MS
-                  : true;
+          <StationsMap
+            things={things}
+            selectedStationId={selectedStationId}
+            onSelectStation={handleSelectStation}
+          />
+        </Box>
 
-                return (
+        {/* 4) รายละเอียด + Multi-chart Dashboard ของสถานีที่เลือก */}
+        {selectedThing ? (
+          <Fade in key={selectedThing["@iot.id"]} timeout={280}>
+            <Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  mb: 1.5,
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={() => handleSelectStation("")}
+                >
+                  <ArrowBackRoundedIcon fontSize="small" />
+                </IconButton>
+                <Typography
+                  onClick={() => handleSelectStation("")}
+                  sx={{
+                    fontSize: 13,
+                    color: text.secondary,
+                    cursor: "pointer",
+                    "&:hover": { color: theme.palette.primary.main },
+                  }}
+                >
+                  กลับไปดูทุกสถานี
+                </Typography>
+              </Box>
+
+              {primaryError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {primaryError}
+                </Alert>
+              )}
+
+              {/* โซน "รายละเอียดตัวแปรที่กำลังดู" — ห่อด้วยกรอบ/พื้นหลังโทนสี
+                  primary อ่อน ๆ ให้แยกออกจากโซน "ตัวแปรอื่น ๆ" ด้านล่างอย่าง
+                  ชัดเจน (ทั้งสีพื้นหลัง กรอบ และหัวข้อ) ไม่ใช่แค่ระยะห่างเฉย ๆ
+                  ภายในจัด Priority-based layout: Wind Rose ก่อนเสมอถ้าสถานีมี
+                  ข้อมูลลม เพราะเป็นภาพรวมที่อ่านง่ายและสำคัญที่สุด */}
+              <Box
+                sx={{
+                  border: `1px solid ${primary.main}33`,
+                  bgcolor: `${primary.main}06`,
+                  borderRadius: `${theme.shape.borderRadius + 4}px`,
+                  p: { xs: 1.5, sm: 2.5 },
+                  mb: 3,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 0.25,
+                  }}
+                >
+                  <ShowChartRoundedIcon
+                    sx={{ fontSize: 18, color: primary.main }}
+                  />
+                  <Typography
+                    sx={{ fontSize: 14, fontWeight: 700, color: primary.main }}
+                  >
+                    {primaryDatastream
+                      ? `${selectedThing.name} · ${primaryName}${
+                          primaryUnit ? ` (${primaryUnit})` : ""
+                        }`
+                      : ""}
+                  </Typography>
+                </Box>
+                <Typography sx={{ fontSize: 12, color: text.secondary, mb: 2 }}>
+                  {primaryDatastream
+                    ? `${selectedThing.name} · ${primaryName}${
+                        primaryUnit ? ` (${primaryUnit})` : ""
+                      } — คลิกแถวในตารางด้านล่างเพื่อเปลี่ยนตัวแปร`
+                    : "เลือกตัวแปรจากตารางด้านล่างเพื่อดูรายละเอียด"}
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                    gap: 2,
+                  }}
+                >
+                  {hasWind && (
+                    <WindRoseChart
+                      speedDatastream={speedDatastream}
+                      directionDatastream={directionDatastream}
+                      from={range.from}
+                      to={range.to}
+                    />
+                  )}
+
+                  <InsightRangedChart
+                    datastream={primaryDatastream}
+                    from={range.from}
+                    to={range.to}
+                    color={primaryColor}
+                  />
+                  <BarChartCard
+                    rows={primaryRows}
+                    unit={primaryUnit}
+                    variableName={primaryName}
+                    loading={primaryFetching}
+                    color={primaryColor}
+                    datastreamId={primaryDatastream?.["@iot.id"]}
+                    from={range.from}
+                    to={range.to}
+                  />
+                  <HeatmapChartCard
+                    rows={primaryRows}
+                    unit={primaryUnit}
+                    variableName={primaryName}
+                    loading={primaryFetching}
+                    color={primaryColor}
+                    datastreamId={primaryDatastream?.["@iot.id"]}
+                    from={range.from}
+                    to={range.to}
+                  />
+                </Box>
+              </Box>
+
+              {/* โซน "ตัวแปรอื่น ๆ" — แยกออกจากโซนรายละเอียดด้านบนอย่างชัดเจน
+                  ด้วยหัวข้อ + คำอธิบายของตัวเอง (ไม่มีกรอบสีไฮไลต์ เพื่อให้ดู
+                  เป็นข้อมูลรอง ไม่ใช่ตัวแปรหลักที่กำลังพิจารณาอยู่) */}
+              {otherDatastreams.length > 0 && (
+                <Box sx={{ mb: 3 }}>
                   <Box
-                    key={t["@iot.id"]}
-                    onClick={() => handleSelectStation(String(t["@iot.id"]))}
                     sx={{
-                      bgcolor: background.paper,
-                      borderRadius: `${theme.shape.borderRadius + 4}px`,
-                      border: `1px solid ${divider}`,
-                      p: 2.5,
-                      cursor: "pointer",
-                      transition:
-                        "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
-                      "&:hover": {
-                        borderColor: theme.palette.primary.main,
-                        boxShadow: `0 4px 16px ${theme.palette.primary.main}1f`,
-                        transform: "translateY(-2px)",
-                      },
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 0.25,
                     }}
                   >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                      <Typography sx={{ fontSize: 15, fontWeight: 700, color: text.primary }}>
-                        {t.name}
-                      </Typography>
-                      <Chip
-                        size="small"
-                        label={isStale ? "ไม่มีข้อมูลใหม่" : "ออนไลน์"}
-                        color={isStale ? "error" : "success"}
-                        variant="outlined"
-                      />
-                    </Box>
-                    <Typography sx={{ fontSize: 12.5, color: text.secondary, mb: 1 }}>
-                      {t.description}
-                    </Typography>
-                    {t.properties?.ecosystem && (
-                      <Chip
-                        size="small"
-                        label={`Ecosystem: ${t.properties.ecosystem}`}
-                        sx={{ mr: 1, mb: 1 }}
-                      />
-                    )}
-                    <Typography sx={{ fontSize: 12, color: text.secondary }}>
-                      {stationDs.length} Datastreams · อัปเดต {timeAgoLabel(latest)}
+                    <GridViewRoundedIcon
+                      sx={{ fontSize: 17, color: text.secondary }}
+                    />
+                    <Typography
+                      sx={{
+                        fontSize: 13.5,
+                        fontWeight: 700,
+                        color: text.primary,
+                      }}
+                    >
+                      ตัวแปรอื่นในสถานีนี้ ({otherDatastreams.length})
                     </Typography>
                   </Box>
-                );
-              })}
+                  <Typography
+                    sx={{ fontSize: 11.5, color: text.secondary, mb: 1.5 }}
+                  >
+                    ภาพรวมแบบย่อของตัวแปรอื่น ๆ ที่สถานีนี้ตรวจวัด
+                    นอกเหนือจากตัวแปรที่แสดงรายละเอียดอยู่ด้านบน —
+                    คลิกแถวในตารางด้านล่างเพื่อสลับไปดูรายละเอียดของตัวแปรนั้นแทน
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(320px, 1fr))",
+                      gap: 2,
+                    }}
+                  >
+                    {otherDatastreams.map((ds) => (
+                      <InsightRangedChart
+                        key={ds["@iot.id"]}
+                        datastream={ds}
+                        from={range.from}
+                        to={range.to}
+                        color={getChartColor(ds["@iot.id"], primary.main)}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {/* ตารางค่าล่าสุดของทุกตัวแปร — คลิกแถวเพื่อเปลี่ยนตัวแปรหลักด้านบน */}
+              <StationDatastreamsTable
+                thing={selectedThing}
+                selectedDatastreamId={selectedDatastreamId}
+                onSelectDatastream={handleSelectDatastream}
+              />
             </Box>
-          )}
-        </>
-      )}
+          </Fade>
+        ) : noStations ? (
+          <Box
+            sx={{
+              border: `1px dashed ${divider}`,
+              borderRadius: `${theme.shape.borderRadius + 4}px`,
+              p: 5,
+              textAlign: "center",
+            }}
+          >
+            <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
+              ยังไม่มีสถานีตรวจวัดในระบบ
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 1,
+                mb: 1.5,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                <GridViewRoundedIcon
+                  sx={{ fontSize: 18, color: text.secondary }}
+                />
+                <Typography
+                  sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}
+                >
+                  รายชื่อสถานีทั้งหมด
+                </Typography>
+              </Box>
+
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={viewMode}
+                onChange={(_, v) => v && setViewMode(v)}
+              >
+                <ToggleButton
+                  value="cards"
+                  sx={{ fontSize: 12, px: 1.25, py: 0.25 }}
+                >
+                  <ViewModuleRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                  การ์ดสรุป
+                </ToggleButton>
+                <ToggleButton
+                  value="table"
+                  sx={{ fontSize: 12, px: 1.25, py: 0.25 }}
+                >
+                  <TableRowsRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                  ตารางละเอียด
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {viewMode === "table" ? (
+              things.map((t) => (
+                <Box key={t["@iot.id"]} sx={{ mb: 2 }}>
+                  <StationDatastreamsTable thing={t} />
+                </Box>
+              ))
+            ) : (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: 2,
+                }}
+              >
+                {things.map((t) => {
+                  const stationDs = t.Datastreams || [];
+                  const latest = stationDs
+                    .map((ds) => ds.Observations?.[0]?.phenomenonTime)
+                    .filter(Boolean)
+                    .sort()
+                    .reverse()[0];
+                  const isStale = latest
+                    ? Date.now() - new Date(latest).getTime() > STALE_MS
+                    : true;
+
+                  return (
+                    <Box
+                      key={t["@iot.id"]}
+                      onClick={() => handleSelectStation(String(t["@iot.id"]))}
+                      sx={{
+                        bgcolor: background.paper,
+                        borderRadius: `${theme.shape.borderRadius + 4}px`,
+                        border: `1px solid ${divider}`,
+                        p: 2.5,
+                        cursor: "pointer",
+                        transition:
+                          "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
+                        "&:hover": {
+                          borderColor: theme.palette.primary.main,
+                          boxShadow: `0 4px 16px ${theme.palette.primary.main}1f`,
+                          transform: "translateY(-2px)",
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          mb: 0.5,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: text.primary,
+                          }}
+                        >
+                          {t.name}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={isStale ? "ไม่มีข้อมูลใหม่" : "ออนไลน์"}
+                          color={isStale ? "error" : "success"}
+                          variant="outlined"
+                        />
+                      </Box>
+                      <Typography
+                        sx={{ fontSize: 12.5, color: text.secondary, mb: 1 }}
+                      >
+                        {t.description}
+                      </Typography>
+                      {t.properties?.ecosystem && (
+                        <Chip
+                          size="small"
+                          label={`Ecosystem: ${t.properties.ecosystem}`}
+                          sx={{ mr: 1, mb: 1 }}
+                        />
+                      )}
+                      <Typography sx={{ fontSize: 12, color: text.secondary }}>
+                        {stationDs.length} Datastreams · อัปเดต{" "}
+                        {timeAgoLabel(latest)}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
     </>
   );
 }

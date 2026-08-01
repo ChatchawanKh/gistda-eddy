@@ -7,12 +7,19 @@
 //     auto-select สถานีเดียวกันให้เลย
 //   - ถ้าเปลี่ยนสถานีที่หน้านี้ ก็จะสะท้อนกลับไปที่หน้า "ภาพรวมสถานี" ด้วยเช่นกัน
 //   - ยังสามารถเลือก "ทุกสถานี" หรือ query สถานีอื่นได้อย่างอิสระจากหน้านี้เอง
+//
+// [ปรับดีไซน์] ลดการใช้สีสัน ให้เป็นลิสต์ที่อ่านง่ายขึ้น:
+//   - การ์ดสรุปเดิม (พื้นหลังสีไล่ตามระดับ) เปลี่ยนเป็นแถบสรุปแบบ text-only
+//     ใช้สีเน้นเฉพาะตัวเลข/จุดสถานะเล็กๆ เท่านั้น
+//   - รายการแจ้งเตือนเดิม (border-left สี + ไอคอนพื้นหลังสี + chip พื้นหลังสี)
+//     เปลี่ยนเป็นแถวลิสต์คั่นด้วยเส้น divider ใช้ "จุดสถานะ" (dot) เล็กๆ
+//     แทนสีพื้นหลังก้อนใหญ่ ตัวหนังสือส่วนใหญ่เป็นสีปกติ (text.primary/secondary)
+//     สีระดับความรุนแรง (error/warning) ใช้เฉพาะจุดเล็กๆ กับ label เท่านั้น
 import * as React from "react";
 import { useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
@@ -22,14 +29,41 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
-import ReportRoundedIcon from "@mui/icons-material/ReportRounded";
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
-import SensorsOffRoundedIcon from "@mui/icons-material/SensorsOffRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 
 const STALE_HOURS = 24;
-const CRITICAL_HOURS = 72; // เกิน 3 วัน = ระดับวิกฤต (สีแดงเข้ม/error) แยกจาก "ต้องตรวจสอบ" (สีเหลือง/warning)
+const CRITICAL_HOURS = 72; // เกิน 3 วัน = ระดับวิกฤต แยกจาก "ต้องตรวจสอบ" ด้วยจุดสีเท่านั้น
+
+// แปลงจำนวนชั่วโมงที่ไม่มีข้อมูลใหม่ ให้เป็นข้อความอ่านง่าย
+// - ต่ำกว่า 1 วัน -> บอกเป็นชั่วโมง
+// - ตั้งแต่ 1 วันขึ้นไป -> บอกเป็นจำนวนวันเต็ม (ปัดลง) เช่น "145 วัน"
+function formatElapsed(hours) {
+  if (!isFinite(hours)) return "ไม่เคยมีข้อมูล";
+
+  const totalHours = Math.round(hours);
+  const totalDays = Math.floor(totalHours / 24);
+
+  if (totalDays < 1) {
+    return `${totalHours} ชั่วโมง`;
+  }
+  return `${totalDays} วัน`;
+}
+
+// ข้อมูลล่าสุดเมื่อไหร่ (วันที่จริง แบบ พ.ศ.) ใช้เสริมคู่กับ formatElapsed
+// เพื่อให้ user เทียบกับปฏิทินจริงได้ทันที ไม่ต้องมานั่งคำนวณเอง
+const lastSeenFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+function formatLastSeen(isoString) {
+  if (!isoString) return null;
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return null;
+  return lastSeenFormatter.format(d);
+}
 
 export default function AlertsView({ datastreams, loading }) {
   const theme = useTheme();
@@ -62,7 +96,7 @@ export default function AlertsView({ datastreams, loading }) {
     .map((ds) => {
       const t = ds.Observations?.[0]?.phenomenonTime;
       const hours = t ? (Date.now() - new Date(t).getTime()) / 3600000 : Infinity;
-      return { ds, hours, stale: hours > STALE_HOURS, critical: hours > CRITICAL_HOURS };
+      return { ds, t, hours, stale: hours > STALE_HOURS, critical: hours > CRITICAL_HOURS };
     })
     .filter((a) => a.stale)
     .sort((a, b) => b.hours - a.hours);
@@ -74,7 +108,7 @@ export default function AlertsView({ datastreams, loading }) {
   return (
     <>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-        <NotificationsActiveRoundedIcon sx={{ fontSize: 22, color: theme.palette.warning?.main || "#f59e0b" }} />
+        <NotificationsActiveRoundedIcon sx={{ fontSize: 20, color: text.secondary }} />
         <Typography sx={{ fontSize: 20, fontWeight: 500, color: text.head }}>
           แจ้งเตือนคุณภาพข้อมูล
         </Typography>
@@ -83,74 +117,52 @@ export default function AlertsView({ datastreams, loading }) {
         แสดงตัวแปรที่ไม่มีข้อมูลใหม่เกิน {STALE_HOURS} ชั่วโมง
       </Typography>
 
-      {/* สรุปสถานะโดยรวมแบบการ์ดสี — เห็นความรุนแรงของปัญหาได้ในแวบเดียว
-          ก่อนไล่ดูรายการทีละรายการด้านล่าง */}
-      {!loading && alerts.length > 0 && (
+      {/* แถบสรุปแบบ text-only — ไม่มีการ์ดสีพื้นหลัง ใช้เส้นคั่นบาง ๆ
+          กับสีเน้นเฉพาะตัวเลขที่เป็นระดับวิกฤตเท่านั้น */}
+      {alerts.length > 0 && (
         <Box
           sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: 1.5,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "stretch",
+            gap: 0,
             mb: 2.5,
+            border: `1px solid ${divider}`,
+            borderRadius: `${theme.shape.borderRadius}px`,
+            overflow: "hidden",
           }}
         >
           {[
             {
               label: "ต้องตรวจสอบด่วน",
               value: criticalCount,
-              icon: ReportRoundedIcon,
-              color: theme.palette.error.main,
-              sub: `เกิน ${CRITICAL_HOURS} ชม.`,
+              color: criticalCount > 0 ? theme.palette.error.main : text.primary,
             },
             {
               label: "ควรตรวจสอบ",
               value: warningCount,
-              icon: WarningAmberRoundedIcon,
-              color: theme.palette.warning?.main || "#f59e0b",
-              sub: `${STALE_HOURS}–${CRITICAL_HOURS} ชม.`,
+              color: text.primary,
             },
             {
               label: "สถานีที่ได้รับผลกระทบ",
-              value: affectedStations,
-              icon: SensorsOffRoundedIcon,
-              color: text.secondary,
-              sub: `จาก ${stations.length} สถานี`,
+              value: `${affectedStations} / ${stations.length}`,
+              color: text.primary,
             },
-          ].map((s) => (
+          ].map((s, i) => (
             <Box
               key={s.label}
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
+                flex: "1 1 160px",
                 p: 1.75,
-                borderRadius: `${theme.shape.borderRadius + 4}px`,
-                border: `1px solid ${divider}`,
-                bgcolor: background.paper,
+                borderLeft: i === 0 ? "none" : `1px solid ${divider}`,
               }}
             >
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "12px",
-                  bgcolor: `${s.color}14`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <s.icon sx={{ fontSize: 19, color: s.color }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontSize: 18, fontWeight: 800, color: text.primary, lineHeight: 1.2 }}>
-                  {s.value}
-                </Typography>
-                <Typography sx={{ fontSize: 11, color: text.secondary }}>
-                  {s.label} · {s.sub}
-                </Typography>
-              </Box>
+              <Typography sx={{ fontSize: 19, fontWeight: 700, color: s.color, lineHeight: 1.2 }}>
+                {s.value}
+              </Typography>
+              <Typography sx={{ fontSize: 11.5, color: text.secondary, mt: 0.25 }}>
+                {s.label}
+              </Typography>
             </Box>
           ))}
         </Box>
@@ -163,15 +175,21 @@ export default function AlertsView({ datastreams, loading }) {
           alignItems: "center",
           gap: 1,
           flexWrap: "wrap",
-          mb: 2.5,
+          mb: 2,
         }}
       >
         <FormControl size="small" sx={{ minWidth: 260 }} disabled={stations.length === 0}>
-          <InputLabel>กรองตามสถานี</InputLabel>
+          <InputLabel shrink>กรองตามสถานี</InputLabel>
           <Select
             label="กรองตามสถานี"
+            notched
             value={selectedStationId}
             onChange={(e) => handleSelectStation(e.target.value)}
+            displayEmpty
+            renderValue={(value) => {
+              if (!value) return "ทุกสถานี";
+              return stations.find((s) => String(s.id) === String(value))?.name || "ทุกสถานี";
+            }}
           >
             <MenuItem value="">ทุกสถานี ({stations.length} สถานี)</MenuItem>
             {stations.map((s) => (
@@ -194,7 +212,7 @@ export default function AlertsView({ datastreams, loading }) {
         </Tooltip>
         {selectedStationId && (
           <Typography sx={{ fontSize: 12, color: text.secondary }}>
-            แสดงเฉพาะสถานีที่เลือกไว้ (เชื่อมกับหน้า "ภาพรวมสถานี")
+            {/* แสดงเฉพาะสถานีที่เลือกไว้ (เชื่อมกับหน้า "ภาพรวมสถานี") */}
           </Typography>
         )}
       </Box>
@@ -205,13 +223,13 @@ export default function AlertsView({ datastreams, loading }) {
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-            p: 2.5,
-            border: `1px solid ${theme.palette.success.main}33`,
-            bgcolor: `${theme.palette.success.main}0d`,
-            borderRadius: `${theme.shape.borderRadius + 4}px`,
+            p: 2.25,
+            border: `1px solid ${divider}`,
+            borderRadius: `${theme.shape.borderRadius}px`,
+            bgcolor: background.paper,
           }}
         >
-          <TaskAltRoundedIcon sx={{ fontSize: 28, color: theme.palette.success.main }} />
+          <TaskAltRoundedIcon sx={{ fontSize: 22, color: text.secondary }} />
           <Box>
             <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: text.primary }}>
               ไม่มีรายการที่ต้องตรวจสอบ
@@ -224,73 +242,74 @@ export default function AlertsView({ datastreams, loading }) {
           </Box>
         </Box>
       ) : (
-        alerts.map(({ ds, hours, critical }) => {
-          const severityColor = critical ? theme.palette.error.main : theme.palette.warning?.main || "#f59e0b";
-          return (
-            <Box
-              key={ds["@iot.id"]}
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 1.5,
-                p: 1.75,
-                mb: 1,
-                border: `1px solid ${divider}`,
-                borderLeft: `4px solid ${severityColor}`,
-                borderRadius: `${theme.shape.borderRadius + 2}px`,
-                bgcolor: background.paper,
-                transition: "box-shadow 0.15s ease, transform 0.15s ease",
-                "&:hover": {
-                  boxShadow: `0 4px 14px ${severityColor}22`,
-                  transform: "translateY(-1px)",
-                },
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
-                <Box
+        <Box
+          sx={{
+            border: `1px solid ${divider}`,
+            borderRadius: `${theme.shape.borderRadius}px`,
+            bgcolor: background.paper,
+            overflow: "hidden",
+          }}
+        >
+          {alerts.map(({ ds, t, hours, critical }, i) => {
+            const severityColor = critical ? theme.palette.error.main : theme.palette.warning?.main || "#D97706";
+            const lastSeen = formatLastSeen(t);
+            return (
+              <Box
+                key={ds["@iot.id"]}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 1.5,
+                  py: 1.5,
+                  px: 1.75,
+                  borderTop: i === 0 ? "none" : `1px solid ${divider}`,
+                  transition: "background-color 0.15s ease",
+                  "&:hover": {
+                    bgcolor: background.default,
+                  },
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.25, minWidth: 0 }}>
+                  {/* จุดสถานะเล็ก ๆ แทนไอคอนกล่องสี — สื่อระดับความรุนแรงแบบเบา ๆ */}
+                  <Box
+                    sx={{
+                      width: 7,
+                      height: 7,
+                      mt: "6px",
+                      borderRadius: "50%",
+                      bgcolor: severityColor,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: text.primary }}>
+                      {ds.thingName} · {ds.ObservedProperty?.name || ds.name}
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: text.secondary, mt: 0.25 }}>
+                      <ScheduleRoundedIcon sx={{ fontSize: 13 }} />
+                      <Typography sx={{ fontSize: 12 }}>
+                        ไม่มีข้อมูลใหม่มา {formatElapsed(hours)}แล้ว
+                        {lastSeen && ` (ล่าสุด ${lastSeen})`}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+                <Typography
                   sx={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: "11px",
-                    bgcolor: `${severityColor}14`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: severityColor,
+                    whiteSpace: "nowrap",
                     flexShrink: 0,
                   }}
                 >
-                  {critical ? (
-                    <ReportRoundedIcon sx={{ fontSize: 19, color: severityColor }} />
-                  ) : (
-                    <WarningAmberRoundedIcon sx={{ fontSize: 19, color: severityColor }} />
-                  )}
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: text.primary }}>
-                    {ds.thingName} · {ds.ObservedProperty?.name || ds.name}
-                  </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: text.secondary }}>
-                    <ScheduleRoundedIcon sx={{ fontSize: 13.5 }} />
-                    <Typography sx={{ fontSize: 12 }}>
-                      ไม่มีข้อมูลใหม่มา {Math.round(hours)} ชั่วโมงแล้ว
-                    </Typography>
-                  </Box>
-                </Box>
+                  {critical ? "ต้องตรวจสอบด่วน" : "ต้องตรวจสอบ"}
+                </Typography>
               </Box>
-              <Chip
-                size="small"
-                label={critical ? "ต้องตรวจสอบด่วน" : "ต้องตรวจสอบ"}
-                sx={{
-                  bgcolor: `${severityColor}1a`,
-                  color: severityColor,
-                  fontWeight: 700,
-                  border: `1px solid ${severityColor}44`,
-                }}
-              />
-            </Box>
-          );
-        })
+            );
+          })}
+        </Box>
       )}
     </>
   );
