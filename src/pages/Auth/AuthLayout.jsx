@@ -32,20 +32,33 @@ export default function AuthLayout({ title, subtitle, children }) {
                 width: 40,
                 height: 40,
                 flexShrink: 0,
-                borderRadius: `${radius - 2}px`,
+                borderRadius: 50,
                 display: "grid",
                 placeItems: "center",
                 background: `linear-gradient(135deg, ${primary.main} 0%, ${primary.dark} 100%)`,
                 boxShadow: `0 3px 10px ${alpha(primary.main, 0.35)}`,
+                mr: 1.5
               }}
             >
-              <AutoAwesomeRoundedIcon sx={{ color: primary.contrastText, fontSize: 20 }} />
+              {/* <AutoAwesomeRoundedIcon sx={{ color: primary.contrastText, fontSize: 20 }} /> */}
+              <Typography sx={{ color: primary.contrastText, fontSize: 18 }}>
+                G
+              </Typography>
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" sx={{ color: text.head, lineHeight: 1.1 }}>
-                GISTDA<Box component="span" sx={{ color: text.secondary }}>.</Box>
+              <Typography
+                variant="h6"
+                sx={{ color: text.head, lineHeight: 1.1 }}
+              >
+                GISTDA
+                <Box component="span" sx={{ color: text.secondary }}>
+                  .
+                </Box>
               </Typography>
-              <Typography variant="caption" sx={{ display: "block", lineHeight: 1.2 }}>
+              <Typography
+                variant="caption"
+                sx={{ display: "block", lineHeight: 1.2 }}
+              >
                 FLUXSUITE
               </Typography>
             </Box>

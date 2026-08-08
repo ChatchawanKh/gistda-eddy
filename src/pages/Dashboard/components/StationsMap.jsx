@@ -271,7 +271,7 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
           </IconButton>
         </Tooltip>
         <Divider />
-        <Tooltip title="ซูมออกไปที่ประเทศไทยทั้งหมด" placement="right">
+        <Tooltip title="ทั้งประเทศ" placement="right">
           <IconButton
             size="small"
             onClick={handleGoHome}

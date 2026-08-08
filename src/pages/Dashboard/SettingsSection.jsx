@@ -16,6 +16,7 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
@@ -195,14 +196,38 @@ export default function SettingsSection() {
 
   return (
     <Box sx={{ maxWidth: 560 }}>
-      <Typography
-        sx={{ fontSize: 20, fontWeight: 500, color: text.head, mb: 0.5 }}
-      >
-        ตั้งค่าบัญชีของฉัน
-      </Typography>
-      <Typography sx={{ fontSize: 13, color: text.secondary, mb: 3 }}>
-        จัดการข้อมูลส่วนตัวและความปลอดภัยของบัญชีคุณเอง
-      </Typography>
+      <Box sx={{ minWidth: 0, py: 1.5, }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+          <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                backgroundColor: "rgba(119, 192, 240, 0.21)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mr: 1
+              }}
+            >
+          <SettingsRoundedIcon sx={{ fontSize: 20, color: text.head }} />
+          </Box>
+          <Typography
+            sx={{
+              fontSize: 20,
+              fontWeight: 400,
+              color: text.head,
+            }}
+          >
+            ตั้งค่าบัญชีของฉัน
+          </Typography>
+        </Box>
+
+        <Typography sx={{ fontSize: 13, color: text.secondary, mb: 3 }}>
+          จัดการข้อมูลส่วนตัวและความปลอดภัยของบัญชีคุณเอง
+        </Typography>
+      </Box>
+
       {/* การ์ด: ข้อมูลส่วนตัว */}
       <Card sx={{ mb: 3 }}>
         <CardContent>

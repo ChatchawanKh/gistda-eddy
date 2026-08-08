@@ -66,16 +66,19 @@ export default function SidebarContent({
               width: 34,
               height: 34,
               flexShrink: 0,
-              borderRadius: `${radius - 1}px`,
+              borderRadius: 50,
               display: open ? "none" : "grid",
               placeItems: "center",
               background: `linear-gradient(135deg, ${primary.main} 0%, ${primary.dark} 100%)`,
               boxShadow: `0 3px 10px ${alpha(primary.main, 0.35)}`,
             }}
           >
-            <AutoAwesomeRoundedIcon
+            {/* <AutoAwesomeRoundedIcon
               sx={{ color: primary.contrastText, fontSize: 18 }}
-            />
+            /> */}
+            <Typography sx={{ color: primary.contrastText, fontSize: 18 }} >
+              G
+            </Typography>
           </Box>
 
           {open && (

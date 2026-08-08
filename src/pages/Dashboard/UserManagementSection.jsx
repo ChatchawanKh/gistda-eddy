@@ -621,16 +621,35 @@ export default function UserManagementSection() {
           justifyContent: "space-between",
         }}
       >
-        <Box>
-          <Typography
-            sx={{
-              fontSize: 20,
-              fontWeight: 400,
-              color: text.head,
-            }}
-          >
-            บริหารจัดการสิทธิ์ผู้ใช้งาน
-          </Typography>
+        <Box sx={{ minWidth: 0, py: 1.5, }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                backgroundColor: "rgba(119, 192, 240, 0.21)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mr: 1,
+              }}
+            >
+              <AdminPanelSettingsRoundedIcon
+                sx={{ fontSize: 20, color: text.head }}
+              />
+            </Box>
+            <Typography
+              sx={{
+                fontSize: 20,
+                fontWeight: 400,
+                color: text.head,
+              }}
+            >
+              บริหารจัดการสิทธิ์ผู้ใช้งาน
+            </Typography>
+          </Box>
+
           <Typography sx={{ fontSize: 13, color: text.secondary }}>
             เพิ่ม ลบ เปลี่ยนสิทธิ์ และตั้งรหัสผ่านใหม่ให้ผู้ใช้งาน
           </Typography>

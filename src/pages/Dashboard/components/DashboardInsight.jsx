@@ -1,24 +1,3 @@
-// src/pages/Dashboard/components/DashboardInsight.jsx
-// [Insight Dashboard] หน้านี้แทนที่ StationOverview.jsx + InsightView.jsx เดิม
-// ทั้งคู่ — ตามข้อกำหนดใหม่ที่ให้รวม "Insight" และ "Dashboard" ไว้ในหน้าเดียว
-// (Single Page Dashboard) แทนที่จะแยกเป็นหน้า "ภาพรวมสถานี" กับ "อินไซต์ข้อมูล"
-// เหมือนเดิม โครงสร้างของหน้า (บนลงล่าง):
-//
-//   0) แถบ Header + Query (sticky) — ชื่อหน้า + ตัวควบคุมหลักทั้งหมด
-//      (ค้นหาตัวแปร / เลือกสถานี / ช่วงเวลา / ล้างตัวกรอง) ค้างอยู่ด้านบน
-//      เสมอขณะเลื่อนหน้า เพื่อให้สลับมุมมองได้สะดวกโดยไม่ต้องเลื่อนกลับขึ้นไป
-//   1) Insight Summary  — แบนเนอร์ "Latest Data" (อ้างอิงวันที่ล่าสุดที่มีข้อมูล
-//      จริงในระบบ ไม่ใช่วันที่ปัจจุบัน) + การ์ด KPI (จำนวน/ค่าเฉลี่ย/สูงสุด/
-//      ต่ำสุด/แนวโน้ม) ของตัวแปรหลักที่กำลังดูอยู่
-//   2) ภาพรวมระบบ — จัด 2 คอลัมน์แยก 2 หมวด: "ภาพรวมระบบ" (จำนวนสถานี/ตัวแปร/
-//      ความสดใหม่ของข้อมูล) ฝั่งซ้าย และ "สถานะสถานีทั้งระบบ" (Donut) ฝั่งขวา
-//      ไม่ผูกกับสถานีที่เลือก แสดงเสมอ
-//   3) แผนที่เลือกสถานี — ไม่ sticky (กินพื้นที่เยอะ) เลื่อนผ่านได้ตามปกติ
-//   4) เมื่อเลือกสถานีแล้ว: Multi-chart grid ของสถานีนั้น จัด layout ตาม
-//      ความสำคัญของข้อมูล (Priority-based Layout) — ถ้าสถานีมีข้อมูลลม
-//      Wind Rose Chart จะอยู่ตำแหน่งแรก/โดดเด่นที่สุดของกริดเสมอ
-//      ตามด้วย Time Series, Bar Chart รายวัน, Heatmap รายชั่วโมง แล้วตามด้วย
-//      กราฟย่อย (small multiples) ของตัวแปรอื่น ๆ ทั้งหมด และตารางค่าล่าสุด
 import * as React from "react";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
@@ -42,11 +21,12 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
-import ShowChartRoundedIcon from "@mui/icons-material/ShowChartRounded";
+import DataSaverOffRoundedIcon from "@mui/icons-material/DataSaverOffRounded";
 import UpdateRoundedIcon from "@mui/icons-material/UpdateRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ViewModuleRoundedIcon from "@mui/icons-material/ViewModuleRounded";
 import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
+import ShowChartRoundedIcon from '@mui/icons-material/ShowChartRounded';
 import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 
 import StationsMap from "./StationsMap";
@@ -279,7 +259,7 @@ export default function DashboardInsight({ things, loading, error }) {
     {
       label: "ตัวแปรที่ตรวจวัด (Datastreams)",
       value: datastreams.length,
-      icon: ShowChartRoundedIcon,
+      icon: DataSaverOffRoundedIcon,
       color: "#3EAE7E",
     },
     {
@@ -316,12 +296,35 @@ export default function DashboardInsight({ things, loading, error }) {
             mb: 2,
           }}
         >
-          <Box>
-            <Typography
-              sx={{ fontSize: 20, fontWeight: 500, color: text.head }}
+          <Box sx={{ minWidth: 0 }}>
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
             >
-              Dashboard
-            </Typography>
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(119, 192, 240, 0.21)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  mr: 1,
+                }}
+              >
+                <GridViewRoundedIcon sx={{ fontSize: 20, color: text.head }} />
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: 20,
+                  fontWeight: 400,
+                  color: text.head,
+                }}
+              >
+                Dashboard
+              </Typography>
+            </Box>
+
             <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
               สรุปภาพรวมและวิเคราะห์ข้อมูลเชิงลึกของทุกสถานีตรวจวัดในหน้าเดียว
             </Typography>
@@ -496,7 +499,10 @@ export default function DashboardInsight({ things, loading, error }) {
                     >
                       {c.label}
                     </Box>
-                    <Box component="span" sx={{ fontWeight: 500 }}>
+                    <Box
+                      component="span"
+                      sx={{ fontWeight: 600, bgcolr: "red" }}
+                    >
                       {c.value}
                     </Box>
                   </Box>
