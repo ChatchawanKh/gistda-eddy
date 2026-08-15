@@ -4,35 +4,37 @@
 import * as React from "react";
 import { useTheme, alpha } from "@mui/material/styles";
 
-import TableContainer from "@mui/material/TableContainer";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Checkbox from "@mui/material/Checkbox";
-import Table from "@mui/material/Table";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableCell from "@mui/material/TableCell";
-import TableSortLabel from "@mui/material/TableSortLabel";
-import TableBody from "@mui/material/TableBody";
-import Chip from "@mui/material/Chip";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import Alert from "@mui/material/Alert";
-import Stack from "@mui/material/Stack";
-import Paper from "@mui/material/Paper";
-import Fade from "@mui/material/Fade";
-import Divider from "@mui/material/Divider";
+import {
+  TableContainer,
+  Box,
+  Typography,
+  Button,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Checkbox,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableSortLabel,
+  TableBody,
+  Chip,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Stack,
+  Paper,
+  Fade,
+  Divider,
+} from "@mui/material";
 
 import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -621,7 +623,7 @@ export default function UserManagementSection() {
           justifyContent: "space-between",
         }}
       >
-        <Box sx={{ minWidth: 0, py: 1.5, }}>
+        <Box sx={{ minWidth: 0, py: 1.5 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
             <Box
               sx={{
@@ -810,7 +812,20 @@ export default function UserManagementSection() {
                 endAdornment: searchText ? (
                   <InputAdornment position="end">
                     <IconButton size="small" onClick={() => setSearchText("")}>
-                      <ClearRoundedIcon sx={{ fontSize: 16 }} />
+                      <Tooltip
+                        title="ล้างตัวกรอง"
+                        slotProps={{
+                          tooltip: {
+                            sx: {
+                              bgcolor: theme.palette.primary.main,
+                              borderRadius: 50,
+                              fontWeight: 400,
+                            },
+                          },
+                        }}
+                      >
+                        <ClearRoundedIcon sx={{ fontSize: 16 }} />
+                      </Tooltip>
                     </IconButton>
                   </InputAdornment>
                 ) : null,
@@ -864,12 +879,10 @@ export default function UserManagementSection() {
           </Typography>
 
           <Stack
-            direction="row"
-            spacing={1.5}
-            flexWrap="wrap"
-            alignItems="center"
-            sx={{ rowGap: 1 }}
-          >
+  direction="row"
+  spacing={1.5}
+  sx={{ flexWrap: "wrap", alignItems: "center", rowGap: 1 }}
+>
             {/* ===== โซน 1: เปลี่ยนสิทธิ์ — segment แยกต่างหาก โทนสี secondary ===== */}
             <Box
               sx={{
@@ -961,12 +974,7 @@ export default function UserManagementSection() {
             <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
 
             {/* ===== โซน 2: action สถานะ/ลบ — กลุ่มเดิม ===== */}
-            <Stack
-              direction="row"
-              spacing={1}
-              flexWrap="wrap"
-              sx={{ rowGap: 1 }}
-            >
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
               <Button
                 size="small"
                 variant="outlined"
@@ -1344,6 +1352,7 @@ export default function UserManagementSection() {
                       <TableCell sx={{ maxWidth: { xs: 220, md: "none" } }}>
                         <Box sx={{ minWidth: 0 }}>
                           <Typography
+                            component="div"
                             sx={{
                               fontSize: 13.5,
                               fontWeight: isSelf ? 600 : 500,
@@ -1510,18 +1519,17 @@ export default function UserManagementSection() {
 
                       <TableCell align="left">
                         <Stack
-                          direction="row"
-                          spacing={0.5}
-                          justifyContent="flex-start"
-                          sx={{
-                            p: 0.5,
-                            // ml: "auto",
-                            width: "fit-content",
-                            borderRadius: 2.5,
-                            bgcolor: alpha(theme.palette.grey[500], 0.04),
-                            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-                          }}
-                        >
+  direction="row"
+  spacing={0.5}
+  sx={{
+    justifyContent: "flex-start",
+    p: 0.5,
+    width: "fit-content",
+    borderRadius: 2.5,
+    bgcolor: alpha(theme.palette.grey[500], 0.04),
+    border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+  }}
+>
                           {!u.is_approved && (
                             <>
                               <Tooltip title="อนุมัติผู้ใช้งาน" arrow>
@@ -1562,7 +1570,7 @@ export default function UserManagementSection() {
                               isRowActionLocked
                                 ? selectedCount > 0
                                   ? BULK_MODE_LOCK_HINT
-                                  : "ไม่สามารถตั้งรหัสผ่านใหม่ให้บัญชีของตัวเองผ่านช่องทางนี้ได้"
+                                  : ""
                                 : "ตั้งรหัสผ่านใหม่"
                             }
                             slotProps={{
@@ -1713,7 +1721,7 @@ export default function UserManagementSection() {
         }}
         fullWidth
         maxWidth="xs"
-        PaperProps={{ sx: { borderRadius: `${radius + 4}px` } }}
+        slotProps={{ paper: { sx: { borderRadius: `${radius + 4}px` } } }}
       >
         <form onSubmit={handleCreateUser}>
           <DialogTitle sx={{ fontWeight: 700, fontSize: "1.1rem" }}>

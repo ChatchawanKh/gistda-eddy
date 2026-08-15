@@ -28,6 +28,8 @@ import {
   WIND_DIRECTION_KEYWORDS,
 } from "../utils/insightHelpers";
 
+import Loading from "./Loading"
+
 export default function InsightView({ things, loading, error }) {
   const theme = useTheme();
   const { background, divider, text } = theme.palette;
@@ -49,12 +51,7 @@ export default function InsightView({ things, loading, error }) {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 4 }}>
-        <CircularProgress size={20} />
-        <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
-          กำลังดึงข้อมูลสถานีจาก FROST-Server...
-        </Typography>
-      </Box>
+      <Loading/>
     );
   }
 

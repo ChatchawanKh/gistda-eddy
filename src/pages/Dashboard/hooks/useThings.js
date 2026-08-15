@@ -2,8 +2,6 @@
 import * as React from "react";
 import { frostFetch } from "../api/frostClient";
 
-// ดึงทุกสถานี พร้อม Location, Datastreams, ObservedProperty
-// และค่าล่าสุด 1 จุดของแต่ละ Datastream ในการเรียกเดียว (nested $expand)
 export function useThings() {
   const [things, setThings] = React.useState([]);
   const [loading, setLoading] = React.useState(true);

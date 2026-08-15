@@ -56,6 +56,8 @@ import {
 import { buildDatePresets } from "../utils/dateRangePresets";
 import { getChartColor } from "../utils/chartColors";
 
+import Loading from "./Loading"
+
 const STALE_MS = 24 * 60 * 60 * 1000;
 
 export default function DashboardInsight({ things, loading, error }) {
@@ -74,11 +76,6 @@ export default function DashboardInsight({ things, loading, error }) {
     [things],
   );
 
-  {
-    /* style กลางที่ใช้ร่วมกันทั้ง Autocomplete/TextField และ Select เพื่อให้
-    หน้าตาตรงกับปุ่ม DateRangePickerModern ทุกจุด (bgcolor, border, radius,
-    font) — override เฉพาะจุดทับ global MuiOutlinedInput ของ theme.jsx */
-  }
   const filterFieldSx = {
     bgcolor: background.paper,
     borderRadius: 0.5,
@@ -90,8 +87,6 @@ export default function DashboardInsight({ things, loading, error }) {
     "& .MuiOutlinedInput-notchedOutline": {
       borderColor: divider,
     },
-    // เจาะจงที่ .MuiOutlinedInput-root:hover ตรง ๆ (แทน "&:hover" เฉย ๆ)
-    // ให้ specificity เท่ากับ override เดิมใน theme.jsx ที่ผูกไว้จุดเดียวกัน
     "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
       borderColor: primary.main,
     },
@@ -236,12 +231,7 @@ export default function DashboardInsight({ things, loading, error }) {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 4 }}>
-        <CircularProgress size={20} />
-        <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
-          กำลังดึงข้อมูลสถานีจาก FROST-Server...
-        </Typography>
-      </Box>
+      <Loading/>
     );
   }
 
@@ -409,7 +399,18 @@ export default function DashboardInsight({ things, loading, error }) {
             anchorDate={latestAvailableDate}
           />
 
-          <Tooltip title="ล้างตัวกรอง">
+          <Tooltip
+            title="ล้างตัวกรอง"
+            slotProps={{
+              tooltip: {
+                sx: {
+                  bgcolor: theme.palette.primary.main,
+                  borderRadius: 50,
+                  fontWeight: 400,
+                },
+              },
+            }}
+          >
             <span>
               <IconButton
                 size="small"

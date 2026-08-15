@@ -39,7 +39,13 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
+
     try {
+      // const fullEmail = `${email}@gistda.or.th`;
+
+      // await login(fullEmail, password, rememberMe);
+
+      // ไปใช้อันนี้ถ้าจะไม่สน @gistda.or.th
       await login(email, password, rememberMe);
       navigate(redirectTo, { replace: true });
     } catch (err) {
@@ -52,7 +58,10 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout title="เข้าสู่ระบบ" subtitle="เข้าสู่ระบบด้วยอีเมลองค์กร">
+    <AuthLayout
+      title="เข้าสู่ระบบ"
+      subtitle="กรุณาเข้าสู่ระบบด้วยอีเมล @gistda.or.th"
+    >
       <Box component="form" onSubmit={handleSubmit}>
         <Stack spacing={2}>
           {infoMessage && <Alert severity="info">{infoMessage}</Alert>}
@@ -62,10 +71,20 @@ export default function Login() {
             label="อีเมล"
             type="email"
             value={email}
+            //เปลี่ยนมาใช้อันนี้ถ้าไม่สน @gistda.or.th
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@gistda.or.th"
-            required
+
+            // onChange={(e) => setEmail(e.target.value.replace(/@.*$/, ""))}
+            // placeholder="name@gistda.or.th"
+            // required
             fullWidth
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="sta">@gistda.or.th</InputAdornment>
+                ),
+              },
+            }}
           />
 
           <TextField
@@ -73,7 +92,7 @@ export default function Login() {
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
+            // required
             fullWidth
             slotProps={{
               input: {

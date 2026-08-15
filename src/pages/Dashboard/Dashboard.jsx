@@ -1,24 +1,5 @@
-// src/pages/Dashboard/Dashboard.jsx
-// แยก component ย่อยออกไปคนละไฟล์เพื่อให้จัดการง่ายขึ้นในอนาคต:
-//   components/SidebarContent.jsx    - เมนูด้านซ้าย (logic เดิม ไม่เปลี่ยน)
-//   components/DashboardInsight.jsx  - "Insight Dashboard" หน้าเดียว: Insight
-//                                       Summary + Multi-chart + เลือกสถานี/ตัวแปร
-//                                       (รวม "ภาพรวมสถานี" และ "อินไซต์ข้อมูล" เดิม)
-//   components/AlertsView.jsx        - หน้าแจ้งเตือนคุณภาพข้อมูล (query สถานีเองได้
-//                                       และ sync กับสถานีที่เลือกไว้ที่ dashboard)
-//   hooks/useThings.js               - ดึงข้อมูลสถานีจาก FROST-Server
-//   hooks/useObservationsRange.js    - ดึง Observation ตามช่วงเวลา ใช้ร่วมกันทุกกราฟ
-//   api/frostClient.js               - fetch client ของ SensorThings API
-//   utils/formatters.js              - แปลง/จัดรูปแบบข้อมูล
-//   utils/insightSummary.js          - สถิติสรุป (count/avg/max/min/trend) + latest date
-//   utils/dateRangePresets.js        - preset ช่วงเวลา อิงวันที่ล่าสุดที่มีข้อมูลจริง
-//   utils/highchartsSetup.js         - Highcharts instance กลาง + exporting/fullscreen
-//   navSections.js                   - โครงสร้างเมนู (ส่วน "จัดการระบบ" ไม่แก้ไข)
-//   Dashboard.constants.js           - ค่าคงที่ของ layout
-//
-// SettingsSection / UserManagementSection / AuthContext (auth + logout) : ไม่แตะต้อง
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -32,11 +13,6 @@ import UserManagementSection from "./UserManagementSection";
 import SettingsSection from "./SettingsSection";
 
 import SidebarContent from "./components/SidebarContent";
-// [รวม UX] StationsList.jsx, TimeSeriesView.jsx และ InsightView.jsx เดิม (และ
-// StationOverview.jsx ที่รวมสองอย่างแรกไว้ก่อนหน้านี้) ไม่ได้ใช้แยกหน้าอีกต่อไป
-// — ทั้งหมดถูกรวมเข้าเป็น "Insight Dashboard" หน้าเดียวใน DashboardInsight.jsx
-// แล้ว (Insight Summary + multi-chart + เลือกสถานี/ตัวแปร + ตาราง ทั้งหมดอยู่ใน
-// หน้าเดียวกัน ควบคุมด้วยช่วงเวลาเดียวกัน) ตามข้อกำหนด Single Page Dashboard
 import DashboardInsight from "./components/DashboardInsight";
 import AlertsView from "./components/AlertsView";
 
@@ -54,7 +30,8 @@ export default function Dashboard() {
 
   const [open, setOpen] = React.useState(true);
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [activeKey, setActiveKey] = React.useState("dashboard");
+   const [searchParams, setSearchParams] = useSearchParams();
+  const activeKey = searchParams.get("view") || "dashboard";
   const isMobile = useMediaQuery("(max-width:900px)");
 
   const navSections = React.useMemo(() => buildNavSections(isAdmin), [isAdmin]);
@@ -77,8 +54,14 @@ export default function Dashboard() {
     return { displayName, roleLabel, initials };
   }, [user]);
 
-  const handleSelect = (key) => {
-    setActiveKey(key);
+    const handleSelect = (key) => {
+    const next = new URLSearchParams(searchParams);
+    if (key === "dashboard") {
+      next.delete("view"); // ค่า default ไม่ต้องโชว์ query param ให้ดู URL สะอาด
+    } else {
+      next.set("view", key);
+    }
+    setSearchParams(next, { replace: true });
     if (isMobile) setMobileOpen(false);
   };
 

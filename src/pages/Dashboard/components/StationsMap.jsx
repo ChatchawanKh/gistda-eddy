@@ -12,6 +12,11 @@
 //     ของ Leaflet เอง ส่วนปุ่ม +/- ปิดปุ่ม default ของ Leaflet แล้วสร้างปุ่ม
 //     custom (มุมซ้ายบน) ให้หน้าตาตรงธีมแอปแทน พร้อมปุ่ม "หน้าแรก" (มุมซ้ายบน
 //     เช่นกัน) ไว้ซูมออกไปดูภาพรวมประเทศไทยทั้งหมด
+//   - สลับ Basemap: ปุ่มไอคอนแผนที่/ดาวเทียม (มุมซ้ายบน ต่อจากปุ่มหน้าแรก)
+//     สลับระหว่างไทล์ถนนของ OpenStreetMap กับภาพถ่ายดาวเทียมของ Esri
+//     (World_Imagery) เวลาอยู่โหมดดาวเทียมจะซ้อนเลเยอร์ label ชื่อสถานที่/
+//     ถนนแบบโปร่งใสทับไว้ด้วย (Esri Reference/World_Boundaries_and_Places)
+//     เพื่อให้ยังอ่านชื่อสถานที่ได้ คล้ายโหมด Hybrid ของ Google Maps
 //   - ขยาย/ย่อความสูง: สลับความสูงกล่องแผนที่ระหว่างค่าเริ่มต้นกับค่าที่สูงขึ้น
 //     แล้วย่อกลับเท่าเดิมได้ (ปุ่มไอคอนลูกศรขึ้น-ลง มุมขวาบน)
 //   - Fullscreen: ใช้ browser Fullscreen API ตรง ๆ (ไม่ต้องเพิ่ม dependency
@@ -35,6 +40,8 @@ import { useTheme } from "@mui/material/styles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import SatelliteAltRoundedIcon from "@mui/icons-material/SatelliteAltRounded";
+import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import HeightRoundedIcon from "@mui/icons-material/HeightRounded";
 import FullscreenRoundedIcon from "@mui/icons-material/FullscreenRounded";
 import FullscreenExitRoundedIcon from "@mui/icons-material/FullscreenExitRounded";
@@ -52,6 +59,27 @@ const THAILAND_BOUNDS = [
   [5.6, 97.3],
   [20.6, 105.7],
 ];
+
+// ---- นิยาม Basemap ที่เลือกสลับได้ -----------------------------------------
+// street    = ไทล์ถนนของ OpenStreetMap (ค่าเริ่มต้นเดิม)
+// satellite = ภาพถ่ายดาวเทียมของ Esri World Imagery พร้อมเลเยอร์ label
+//             (ชื่อสถานที่/เส้นถนน) ซ้อนทับไว้ให้ยังอ่านหมุด/ตำแหน่งได้ง่าย
+const BASEMAPS = {
+  street: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution:
+      "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerographics, IGN, IGP, UPR-EGP, and the GIS User Community",
+    // เลเยอร์ label (ชื่อเมือง/ถนน) ซ้อนทับภาพถ่ายดาวเทียม เพื่อให้อ่านบริบท
+    // ตำแหน่งได้ง่ายขึ้น เหมือนโหมด Hybrid ของ Google Maps
+    labelsUrl:
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  },
+};
 
 function makeIcon(color, active) {
   const size = active ? 20 : 14;
@@ -87,13 +115,18 @@ function getFullscreenElement() {
 }
 
 function requestFullscreen(el) {
-  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  const fn =
+    el.requestFullscreen ||
+    el.webkitRequestFullscreen ||
+    el.msRequestFullscreen;
   if (fn) fn.call(el);
 }
 
 function exitFullscreen() {
   const fn =
-    document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    document.exitFullscreen ||
+    document.webkitExitFullscreen ||
+    document.msExitFullscreen;
   if (fn) fn.call(document);
 }
 
@@ -144,12 +177,23 @@ function MapInstanceSetter({ onReady }) {
   return null;
 }
 
-export default function StationsMap({ things, selectedStationId, onSelectStation }) {
+export default function StationsMap({
+  things,
+  selectedStationId,
+  onSelectStation,
+}) {
   const theme = useTheme();
-  const { divider, success, error: errorColor, text, background } = theme.palette;
+  const {
+    divider,
+    success,
+    error: errorColor,
+    text,
+    background,
+  } = theme.palette;
 
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [basemap, setBasemap] = React.useState("street"); // "street" | "satellite"
   const [mapInstance, setMapInstance] = React.useState(null);
   const wrapperRef = React.useRef(null);
 
@@ -178,6 +222,9 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
     }
   };
 
+  const toggleBasemap = () =>
+    setBasemap((b) => (b === "street" ? "satellite" : "street"));
+
   const handleZoomIn = () => mapInstance?.zoomIn();
   const handleZoomOut = () => mapInstance?.zoomOut();
   // ปุ่ม "หน้าแรก" — ซูมออกไปดูภาพรวมทั้งประเทศไทย ไม่ผูกกับตำแหน่งสถานี
@@ -187,7 +234,7 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
 
   const points = things.map(getStationLatLng).filter(Boolean);
   const selectedThing = things.find(
-    (t) => String(t["@iot.id"]) === String(selectedStationId)
+    (t) => String(t["@iot.id"]) === String(selectedStationId),
   );
   const selectedPoint = selectedThing ? getStationLatLng(selectedThing) : null;
 
@@ -208,7 +255,12 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
     );
   }
 
-  const mapHeight = isFullscreen ? "100vh" : isExpanded ? EXPANDED_HEIGHT : BASE_HEIGHT;
+  const mapHeight = isFullscreen
+    ? "100vh"
+    : isExpanded
+      ? EXPANDED_HEIGHT
+      : BASE_HEIGHT;
+  const activeBasemap = BASEMAPS[basemap];
 
   return (
     <Box
@@ -227,9 +279,9 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
         "& .leaflet-container": { height: "100%", width: "100%" },
       }}
     >
-      {/* ปุ่ม zoom in/out + หน้าแรก (ซูมออกไปทั้งประเทศไทย) ลอยมุมซ้ายบน —
-          แทนที่ปุ่ม +/- แบบ default ของ Leaflet (ปิดด้วย zoomControl={false}
-          ด้านล่าง) ด้วยดีไซน์เดียวกับปุ่มฝั่งขวา (การ์ดโค้งมน มีเงาบาง ๆ) */}
+      {/* ปุ่ม zoom in/out + หน้าแรก + สลับ basemap ลอยมุมซ้ายบน — แทนที่ปุ่ม
+          +/- แบบ default ของ Leaflet (ปิดด้วย zoomControl={false} ด้านล่าง)
+          ด้วยดีไซน์เดียวกับปุ่มฝั่งขวา (การ์ดโค้งมน มีเงาบาง ๆ) */}
       <Box
         sx={{
           position: "absolute",
@@ -245,7 +297,19 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
           bgcolor: background.paper,
         }}
       >
-        <Tooltip title="ซูมเข้า" placement="right">
+        <Tooltip
+          title="ซูมเข้า"
+          placement="right"
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: theme.palette.primary.main,
+                borderRadius: 50,
+                fontWeight: 400,
+              },
+            },
+          }}
+        >
           <IconButton
             size="small"
             onClick={handleZoomIn}
@@ -258,7 +322,20 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
           </IconButton>
         </Tooltip>
         <Divider />
-        <Tooltip title="ซูมออก" placement="right">
+
+        <Tooltip
+          title="ซูมออก"
+          placement="right"
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: theme.palette.primary.main,
+                borderRadius: 50,
+                fontWeight: 400,
+              },
+            },
+          }}
+        >
           <IconButton
             size="small"
             onClick={handleZoomOut}
@@ -271,7 +348,19 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
           </IconButton>
         </Tooltip>
         <Divider />
-        <Tooltip title="ทั้งประเทศ" placement="right">
+        <Tooltip
+          title="ทั้งประเทศ"
+          placement="right"
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: theme.palette.primary.main,
+                borderRadius: 50,
+                fontWeight: 400,
+              },
+            },
+          }}
+        >
           <IconButton
             size="small"
             onClick={handleGoHome}
@@ -281,6 +370,37 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
             }}
           >
             <HomeRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
+          </IconButton>
+        </Tooltip>
+        <Divider />
+        <Tooltip
+          title={basemap === "street" ? "ภาพถ่ายดาวเทียม" : "แผนที่เริ่มต้น"}
+          placement="right"
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: theme.palette.primary.main,
+                borderRadius: 50,
+                fontWeight: 400,
+              },
+            },
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={toggleBasemap}
+            sx={{
+              borderRadius: 0,
+              "&:hover": { bgcolor: `${theme.palette.primary.main}12` },
+            }}
+          >
+            {basemap === "street" ? (
+              <SatelliteAltRoundedIcon
+                sx={{ fontSize: 18, color: text.secondary }}
+              />
+            ) : (
+              <MapRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
+            )}
           </IconButton>
         </Tooltip>
       </Box>
@@ -297,7 +417,18 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
           gap: 0.75,
         }}
       >
-        <Tooltip title={isExpanded ? "ย่อแผนที่กลับขนาดเดิม" : "ขยายแผนที่ให้สูงขึ้น"}>
+        <Tooltip
+          title={isExpanded ? "ย่อแผนที่กลับขนาดเดิม" : "ขยายแผนที่ให้สูงขึ้น"}
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: theme.palette.primary.main,
+                borderRadius: 50,
+                fontWeight: 400,
+              },
+            },
+          }}
+        >
           <IconButton
             size="small"
             onClick={() => setIsExpanded((v) => !v)}
@@ -305,13 +436,27 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
               bgcolor: background.paper,
               border: `1px solid ${divider}`,
               boxShadow: "0 2px 8px rgba(15, 23, 42, 0.14)",
-              "&:hover": { bgcolor: background.paper, borderColor: theme.palette.primary.main },
+              "&:hover": {
+                bgcolor: background.paper,
+                borderColor: theme.palette.primary.main,
+              },
             }}
           >
             <HeightRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
           </IconButton>
         </Tooltip>
-        <Tooltip title={isFullscreen ? "ออกจากโหมดเต็มจอ" : "ดูแผนที่แบบเต็มจอ"}>
+        <Tooltip
+          title={isFullscreen ? "ออกจากโหมดเต็มจอ" : "ดูแผนที่แบบเต็มจอ"}
+          slotProps={{
+            tooltip: {
+              sx: {
+                bgcolor: theme.palette.primary.main,
+                borderRadius: 50,
+                fontWeight: 400,
+              },
+            },
+          }}
+        >
           <IconButton
             size="small"
             onClick={toggleFullscreen}
@@ -319,23 +464,41 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
               bgcolor: background.paper,
               border: `1px solid ${divider}`,
               boxShadow: "0 2px 8px rgba(15, 23, 42, 0.14)",
-              "&:hover": { bgcolor: background.paper, borderColor: theme.palette.primary.main },
+              "&:hover": {
+                bgcolor: background.paper,
+                borderColor: theme.palette.primary.main,
+              },
             }}
           >
             {isFullscreen ? (
-              <FullscreenExitRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
+              <FullscreenExitRoundedIcon
+                sx={{ fontSize: 18, color: text.secondary }}
+              />
             ) : (
-              <FullscreenRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
+              <FullscreenRoundedIcon
+                sx={{ fontSize: 18, color: text.secondary }}
+              />
             )}
           </IconButton>
         </Tooltip>
       </Box>
 
-      <MapContainer center={points[0]} zoom={7} scrollWheelZoom zoomControl={false}>
+      <MapContainer
+        center={points[0]}
+        zoom={7}
+        scrollWheelZoom
+        zoomControl={false}
+      >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          // key เปลี่ยนตาม basemap เพื่อบังคับ remount TileLayer ตอนสลับ url
+          // (react-leaflet ไม่ได้ diff การเปลี่ยน url prop ให้เสมอไป)
+          key={basemap}
+          attribution={activeBasemap.attribution}
+          url={activeBasemap.url}
         />
+        {basemap === "satellite" && (
+          <TileLayer url={BASEMAPS.satellite.labelsUrl} pane="overlayPane" />
+        )}
         <FitAllStations points={points} />
         {selectedPoint && <FlyToSelected point={selectedPoint} />}
         <MapResizeHandler resizeKey={`${isExpanded}-${isFullscreen}`} />
@@ -352,8 +515,8 @@ export default function StationsMap({ things, selectedStationId, onSelectStation
           const color = !latest
             ? theme.palette.grey?.[500] || "#9e9e9e"
             : isStale
-            ? errorColor.main
-            : success.main;
+              ? errorColor.main
+              : success.main;
           const isActive = String(t["@iot.id"]) === String(selectedStationId);
 
           return (

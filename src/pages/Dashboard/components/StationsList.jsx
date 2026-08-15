@@ -1,5 +1,3 @@
-// src/pages/Dashboard/components/StationsList.jsx
-// ใช้ StationDatastreamsTable ร่วมกับหน้า "ภาพรวมสถานี"
 import * as React from "react";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";

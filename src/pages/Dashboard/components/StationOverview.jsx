@@ -1,25 +1,3 @@
-// src/pages/Dashboard/components/StationOverview.jsx
-// [รวม UX] หน้านี้รวมสามหน้าเดิมเข้าด้วยกัน: "ภาพรวมสถานี", "สถานีตรวจวัด"
-// (StationsList.jsx เดิม) และ "กราฟข้อมูลตามเวลา" (TimeSeriesView.jsx เดิม)
-// เหตุผล: ทั้งสามหน้าล้วนต้อง query "สถานี" และ "ตัวแปร/สาร" ร่วมกัน การแยกหน้า
-// ทำให้ผู้ใช้ต้องเลือกสถานีซ้ำหลายรอบ จึงรวมเป็น flow เดียว:
-//   1) เลือกสถานี (คลิกหมุดบนแผนที่ / dropdown / การ์ด / ตาราง)
-//   2) เลือกตัวแปร/สารที่ต้องการดู (คลิกแถวในตาราง หรือค้นหาโดยตรงด้านบน)
-//   3) กราฟข้อมูลตามเวลาของตัวแปรนั้นแสดงทันที พร้อมตัวเลือกช่วงเวลา
-// สถานะทั้งหมด (สถานี + ตัวแปร) ผูกกับ query param บน URL (?station=&ds=) เพื่อให้
-// หน้า "แจ้งเตือนคุณภาพข้อมูล" (AlertsView.jsx) อ่านสถานีเดียวกันนี้ไปกรองต่อได้
-// โดยไม่ต้อง query ซ้ำ (แต่ยังเปลี่ยนเองที่หน้าแจ้งเตือนได้อิสระเช่นกัน)
-//
-// - เพิ่มแผนที่ Leaflet แสดงพิกัดทุกสถานี พร้อมสีบอกสถานะ
-// - เพิ่มช่อง "ค้นหาตัวแปร/สารที่ต้องการดูโดยตรง (ทุกสถานี)" — เทียบเท่า dropdown
-//   เดิมในหน้า "กราฟข้อมูลตามเวลา" แต่เลือกแล้วพากราฟ + ตารางของสถานีนั้นมาด้วยเลย
-// - เมื่อยังไม่เลือกสถานี มีปุ่มสลับมุมมอง "การ์ดสรุป" / "ตารางละเอียดทุกสถานี"
-//   (มุมมองตารางคือฟังก์ชันเดิมของหน้า "สถานีตรวจวัด")
-// - เมื่อเลือกสถานีแล้ว จะแสดงตาราง Datastream ของสถานีนั้นแทนการ์ดสรุปทั้งหมด
-// - เมื่อเลือกสถานี จะแสดง "กราฟข้อมูลตามเวลา" ของตัวแปรแรกไปพร้อมกันทันที
-//   คลิกแถวในตารางเพื่อสลับดูกราฟของตัวแปรอื่นในสถานีเดียวกันได้
-// - ปุ่ม/ตัวเลือกที่กดแล้วไม่มีผล (เช่น dropdown ตอนยังไม่มีสถานี) จะถูก
-//   disable ไว้ตั้งแต่แรกกันไม่ให้กด แทนที่จะให้กดแล้วเจอผลลัพธ์ว่างเปล่า
 import * as React from "react";
 import { useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
@@ -54,6 +32,8 @@ import StationsMap from "./StationsMap";
 import StationDatastreamsTable from "./StationDatastreamsTable";
 import StationTimeSeriesChart from "./StationTimeSeriesChart";
 import { flattenDatastreams, timeAgoLabel, hasObservationData } from "../utils/formatters";
+
+import Loading from "./Loading"
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -129,15 +109,10 @@ const handleSelectStation = React.useCallback(
   }, [selectedStationId, things.length]);
 
   if (loading) {
-    return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 4 }}>
-        <CircularProgress size={20} />
-        <Typography sx={{ fontSize: 13.5, color: text.secondary }}>
-          กำลังดึงข้อมูลสถานีจาก FROST-Server...
-        </Typography>
-      </Box>
-    );
-  }
+      return (
+        <Loading/>
+      );
+    }
 
   if (error) {
     return <Alert severity="error">{error}</Alert>;
@@ -180,11 +155,14 @@ const handleSelectStation = React.useCallback(
 
   return (
     <>
-      <Typography sx={{ fontSize: 20, fontWeight: 500, color: text.head, mb: 0.5 }}>
+      <Typography
+        sx={{ fontSize: 20, fontWeight: 500, color: text.head, mb: 0.5 }}
+      >
         ภาพรวมสถานี
       </Typography>
       <Typography sx={{ fontSize: 13.5, color: text.secondary, mb: 3 }}>
-        ข้อมูลจากทุกสถานีตรวจวัด (SensorThings API) — เลือกสถานีหรือค้นหาตัวแปรที่ต้องการดูได้โดยตรง
+        ข้อมูลจากทุกสถานีตรวจวัด (SensorThings API) —
+        เลือกสถานีหรือค้นหาตัวแปรที่ต้องการดูได้โดยตรง
       </Typography>
 
       {/* สรุปภาพรวมทั้งระบบ (ไม่เปลี่ยนตามตัวกรอง) */}
@@ -221,14 +199,23 @@ const handleSelectStation = React.useCallback(
                 flexShrink: 0,
               }}
             >
-              <c.icon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+              <c.icon
+                sx={{ fontSize: 20, color: theme.palette.primary.main }}
+              />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 12, color: text.secondary, mb: 0.25 }}>
+              <Typography
+                sx={{ fontSize: 12, color: text.secondary, mb: 0.25 }}
+              >
                 {c.label}
               </Typography>
               <Typography
-                sx={{ fontSize: 20, fontWeight: 700, color: text.primary, lineHeight: 1.2 }}
+                sx={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: text.primary,
+                  lineHeight: 1.2,
+                }}
               >
                 {c.value}
               </Typography>
@@ -248,9 +235,13 @@ const handleSelectStation = React.useCallback(
           mb: 3,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1.25 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1.25 }}
+        >
           <SearchRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
-          <Typography sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}>
+          <Typography
+            sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}
+          >
             ค้นหาตัวแปร/สารที่ต้องการดูโดยตรง
           </Typography>
         </Box>
@@ -260,8 +251,12 @@ const handleSelectStation = React.useCallback(
           options={queryableDatastreams}
           value={selectedAutocompleteValue}
           onChange={(_, ds) => handleJumpToDatastream(ds)}
-          getOptionLabel={(ds) => `${ds.thingName} · ${ds.ObservedProperty?.name || ds.name}`}
-          isOptionEqualToValue={(a, b) => String(a["@iot.id"]) === String(b["@iot.id"])}
+          getOptionLabel={(ds) =>
+            `${ds.thingName} · ${ds.ObservedProperty?.name || ds.name}`
+          }
+          isOptionEqualToValue={(a, b) =>
+            String(a["@iot.id"]) === String(b["@iot.id"])
+          }
           groupBy={(ds) => ds.thingName}
           renderInput={(params) => (
             <TextField
@@ -295,13 +290,26 @@ const handleSelectStation = React.useCallback(
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
             <MapRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
-            <Typography sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}>
+            <Typography
+              sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}
+            >
               แผนที่แสดงตำแหน่งสถานี
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-            <FormControl size="small" sx={{ minWidth: 260 }} disabled={noStations}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            <FormControl
+              size="small"
+              sx={{ minWidth: 260 }}
+              disabled={noStations}
+            >
               <InputLabel>เลือกสถานีที่ต้องการดู</InputLabel>
               <Select
                 label="เลือกสถานีที่ต้องการดู"
@@ -316,7 +324,18 @@ const handleSelectStation = React.useCallback(
                 ))}
               </Select>
             </FormControl>
-            <Tooltip title="ล้างตัวกรอง">
+            <Tooltip
+              title="ล้างตัวกรอง"
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    bgcolor: theme.palette.primary.main,
+                    borderRadius: 50,
+                    fontWeight: 400,
+                  },
+                },
+              }}
+            >
               <span>
                 <IconButton
                   size="small"
@@ -341,7 +360,9 @@ const handleSelectStation = React.useCallback(
       {selectedThing ? (
         <Fade in key={selectedThing["@iot.id"]} timeout={280}>
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5 }}>
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5 }}
+            >
               <IconButton size="small" onClick={() => handleSelectStation("")}>
                 <ArrowBackRoundedIcon fontSize="small" />
               </IconButton>
@@ -401,8 +422,12 @@ const handleSelectStation = React.useCallback(
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <GridViewRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}>
+              <GridViewRoundedIcon
+                sx={{ fontSize: 18, color: text.secondary }}
+              />
+              <Typography
+                sx={{ fontSize: 13, fontWeight: 700, color: text.primary }}
+              >
                 รายชื่อสถานีทั้งหมด
               </Typography>
             </Box>
@@ -415,11 +440,17 @@ const handleSelectStation = React.useCallback(
               value={viewMode}
               onChange={(_, v) => v && setViewMode(v)}
             >
-              <ToggleButton value="cards" sx={{ fontSize: 12, px: 1.25, py: 0.25 }}>
+              <ToggleButton
+                value="cards"
+                sx={{ fontSize: 12, px: 1.25, py: 0.25 }}
+              >
                 <ViewModuleRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} />
                 การ์ดสรุป
               </ToggleButton>
-              <ToggleButton value="table" sx={{ fontSize: 12, px: 1.25, py: 0.25 }}>
+              <ToggleButton
+                value="table"
+                sx={{ fontSize: 12, px: 1.25, py: 0.25 }}
+              >
                 <TableRowsRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} />
                 ตารางละเอียด
               </ToggleButton>
@@ -470,8 +501,20 @@ const handleSelectStation = React.useCallback(
                       },
                     }}
                   >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                      <Typography sx={{ fontSize: 15, fontWeight: 700, color: text.primary }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 0.5,
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: text.primary,
+                        }}
+                      >
                         {t.name}
                       </Typography>
                       <Chip
@@ -481,7 +524,9 @@ const handleSelectStation = React.useCallback(
                         variant="outlined"
                       />
                     </Box>
-                    <Typography sx={{ fontSize: 12.5, color: text.secondary, mb: 1 }}>
+                    <Typography
+                      sx={{ fontSize: 12.5, color: text.secondary, mb: 1 }}
+                    >
                       {t.description}
                     </Typography>
                     {t.properties?.ecosystem && (
@@ -492,7 +537,8 @@ const handleSelectStation = React.useCallback(
                       />
                     )}
                     <Typography sx={{ fontSize: 12, color: text.secondary }}>
-                      {stationDs.length} Datastreams · อัปเดต {timeAgoLabel(latest)}
+                      {stationDs.length} Datastreams · อัปเดต{" "}
+                      {timeAgoLabel(latest)}
                     </Typography>
                   </Box>
                 );

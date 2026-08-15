@@ -21,6 +21,8 @@ import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded';
 
+import Loading from "./Loading"
+
 
 const STALE_HOURS = 24;
 const CRITICAL_HOURS = 72;
@@ -124,16 +126,7 @@ export default function AlertsView({ datastreams, loading }) {
 
   if (loading) {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 160,
-        }}
-      >
-        <CircularProgress size={22} />
-      </Box>
+      <Loading />
     );
   }
 
@@ -284,7 +277,7 @@ export default function AlertsView({ datastreams, loading }) {
               sx={{
                 fontSize: 12,
                 whiteSpace: "nowrap",
-                fontWeight: 500
+                fontWeight: 500,
               }}
             >
               {totalDatastreams} Datastream
@@ -590,7 +583,18 @@ export default function AlertsView({ datastreams, loading }) {
             </Select>
           </FormControl>
 
-          <Tooltip title="ล้างตัวกรอง">
+          <Tooltip
+            title="ล้างตัวกรอง"
+            slotProps={{
+              tooltip: {
+                sx: {
+                  bgcolor: theme.palette.primary.main,
+                  borderRadius: 50,
+                  fontWeight: 400,
+                },
+              },
+            }}
+          >
             <span>
               <IconButton
                 size="small"
