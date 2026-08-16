@@ -1,7 +1,3 @@
-// src/utils/validatePassword.js
-// เช็ค policy รหัสผ่านฝั่ง client ให้ตรงกับ server (server/auth/utils/password.js)
-// ใช้เพื่อ feedback ทันทีให้ผู้ใช้เห็นก่อน submit — server ยังคง validate ซ้ำเสมอ (อย่าเชื่อ client ฝ่ายเดียว)
-
 const BLACKLIST = [
   'password',
   'password123',
@@ -13,6 +9,21 @@ const BLACKLIST = [
   '111111',
   'abcdef',
 ];
+
+// escape อักขระพิเศษของคำใน BLACKLIST ก่อนเอาไปสร้าง RegExp (กันกรณีในอนาคตมีคำที่มีอักขระพิเศษ)
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// เช็คว่า password มีคำใน BLACKLIST ปรากฏแบบ "เป็นคำ" (มี word boundary คั่นทั้งสองฝั่ง)
+// ไม่ใช่แค่เป็น substring ที่แฝงอยู่ในคำอื่น เช่น "superadmin123" ต้องไม่โดนบล็อกเพราะมีคำว่า "admin" ซ้อนอยู่
+// แต่ "admin123" หรือ "my-admin-pass" ยังต้องโดนบล็อกเหมือนเดิม
+function containsBlacklistedWord(password) {
+  return BLACKLIST.some((word) => {
+    const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
+    return pattern.test(password);
+  });
+}
 
 /**
  * @param {string} password
@@ -49,16 +60,8 @@ export function validatePassword(password, email = '') {
     errors.push('ห้ามใช้ตัวอักษรซ้ำติดกัน เช่น aaa หรือ 111');
   }
 
-  const lower = password.toLowerCase();
-  if (BLACKLIST.some((item) => lower.includes(item))) {
+  if (containsBlacklistedWord(password)) {
     errors.push('รหัสผ่านง่ายเกินไป');
-  }
-
-  if (email) {
-    const username = email.split('@')[0]?.toLowerCase();
-    if (username && lower.includes(username)) {
-      errors.push('รหัสผ่านต้องไม่เกี่ยวข้องกับอีเมล');
-    }
   }
 
   return errors;

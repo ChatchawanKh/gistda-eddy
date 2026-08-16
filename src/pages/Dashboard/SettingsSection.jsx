@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -17,6 +17,8 @@ import Divider from "@mui/material/Divider";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+
+import { Collapse, Fade } from "@mui/material";
 
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
@@ -47,44 +49,133 @@ const PASSWORD_RULES = [
   },
 ];
 
-function PasswordChecklist({ password }) {
+const PasswordChecklist = React.memo(function PasswordChecklist({ password }) {
   const theme = useTheme();
+  const isVisible = password.length > 0;
+
+  const passedCount = PASSWORD_RULES.filter((rule) => rule.test(password)).length;
+  const strengthRatio = PASSWORD_RULES.length
+    ? passedCount / PASSWORD_RULES.length
+    : 0;
+
+  const strengthLevels = [
+    { label: "อ่อนแอ", color: theme.palette.error.main },
+    { label: "พอใช้", color: theme.palette.warning.main },
+    { label: "ดี", color: theme.palette.info.main },
+    { label: "แข็งแรง", color: theme.palette.success.main },
+  ];
+
+  const levelIndex =
+    password.length === 0
+      ? -1
+      : Math.min(
+          Math.floor(strengthRatio * strengthLevels.length),
+          strengthLevels.length - 1,
+        );
+
+  const activeLevel = levelIndex >= 0 ? strengthLevels[levelIndex] : null;
+  const barWidthPercent = Math.max(strengthRatio * 100, password.length > 0 ? 6 : 0);
+
   return (
-    <Stack spacing={0.5} sx={{ pl: 0.5 }}>
-      {PASSWORD_RULES.map((rule) => {
-        const passed = rule.test(password);
-        return (
+    <Collapse in={isVisible} timeout={220} unmountOnExit>
+      <Box
+        sx={{
+          mt: 1.25,
+          p: 2,
+          borderRadius: 1,
+          bgcolor: alpha(theme.palette.text.primary, 0.03),
+          border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        }}
+      >
+        {/* Strength bar */}
+        <Stack spacing={0.75} sx={{ mb: 1.5 }}>
           <Box
-            key={rule.key}
-            sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+            sx={{
+              position: "relative",
+              height: 5,
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.text.primary, 0.08),
+              overflow: "hidden",
+            }}
           >
-            {passed ? (
-              <CheckCircleRoundedIcon
-                sx={{ fontSize: 16, color: theme.palette.success.main }}
-              />
-            ) : (
-              <RadioButtonUncheckedRoundedIcon
-                sx={{
-                  fontSize: 16,
-                  color: theme.palette.text.secondary,
-                  opacity: 0.5,
-                }}
-              />
-            )}
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                width: `${barWidthPercent}%`,
+                borderRadius: 3,
+                bgcolor: activeLevel?.color ?? "transparent",
+                transition: "width 0.3s ease, background-color 0.3s ease",
+              }}
+            />
+          </Box>
+
+          <Fade in={!!activeLevel} timeout={200}>
             <Typography
               variant="caption"
-              sx={{
-                color: passed ? theme.palette.success.main : "text.secondary",
-              }}
+              sx={{ color: activeLevel?.color, fontWeight: 600, letterSpacing: 0.2 }}
             >
-              {rule.label}
+              {activeLevel?.label ?? ""}
             </Typography>
-          </Box>
-        );
-      })}
-    </Stack>
+          </Fade>
+        </Stack>
+
+        {/* Rules — 2 columns */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            columnGap: 1.5,
+            rowGap: 0.75,
+          }}
+        >
+          {PASSWORD_RULES.map((rule) => {
+            const passed = rule.test(password);
+            return (
+              <Box
+                key={rule.key}
+                sx={{ display: "flex", alignItems: "center", gap: 0.625, minWidth: 0 }}
+              >
+                <Box sx={{ position: "relative", width: 14, height: 14, flexShrink: 0 }}>
+                  <Fade in={passed} timeout={180}>
+                    <CheckCircleRoundedIcon
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        fontSize: 14,
+                        color: theme.palette.success.main,
+                      }}
+                    />
+                  </Fade>
+                  <Fade in={!passed} timeout={180}>
+                    <RadioButtonUncheckedRoundedIcon
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        fontSize: 14,
+                        color: theme.palette.text.disabled,
+                      }}
+                    />
+                  </Fade>
+                </Box>
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{
+                    color: passed ? "text.primary" : "text.disabled",
+                    transition: "color 0.2s ease",
+                  }}
+                >
+                  {rule.label}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    </Collapse>
   );
-}
+});
 
 export default function SettingsSection() {
   const theme = useTheme();
@@ -119,6 +210,7 @@ export default function SettingsSection() {
     () => validatePassword(newPassword, user?.email),
     [newPassword, user?.email],
   );
+
   const isNewPasswordValid =
     newPassword.length > 0 && newPasswordErrors.length === 0;
   const passwordsMatch =
@@ -421,7 +513,7 @@ export default function SettingsSection() {
                 <Button
                   type="submit"
                   variant="contained"
-                  color="error"
+                  // color="error"
                   disabled={savingPassword || isPasswordInvalid}
                 >
                   {savingPassword ? "กำลังบันทึก..." : "เปลี่ยนรหัสผ่าน"}

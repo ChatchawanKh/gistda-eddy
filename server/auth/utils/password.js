@@ -1,8 +1,30 @@
-// server/auth/utils/password.js
 import bcrypt from "bcrypt";
 import { fileURLToPath } from "url";
 
 const SALT_ROUNDS = 12;
+
+const BLACKLIST = [
+  "password",
+  "password123",
+  "admin",
+  "administrator",
+  "qwerty",
+  "123456",
+  "12345678",
+  "111111",
+  "abcdef",
+];
+
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function containsBlacklistedWord(password) {
+  return BLACKLIST.some((word) => {
+    const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
+    return pattern.test(password);
+  });
+}
 
 /**
  * Validate password policy
@@ -53,32 +75,8 @@ export function validatePassword(password, email = "") {
     errors.push("ห้ามใช้ตัวอักษรซ้ำติดกัน เช่น aaa หรือ 111");
   }
 
-  // block password ที่เดาง่าย
-  const blacklist = [
-    "password",
-    "password123",
-    "admin",
-    "administrator",
-    "qwerty",
-    "123456",
-    "12345678",
-    "111111",
-    "abcdef",
-  ];
-
-  const lower = password.toLowerCase();
-
-  if (blacklist.some((item) => lower.includes(item))) {
+  if (containsBlacklistedWord(password)) {
     errors.push("รหัสผ่านง่ายเกินไป");
-  }
-
-  // ห้ามมี email username
-  if (email) {
-    const username = email.split("@")[0]?.toLowerCase();
-
-    if (username && lower.includes(username)) {
-      errors.push("รหัสผ่านต้องไม่เกี่ยวข้องกับอีเมล");
-    }
   }
 
   return errors;
