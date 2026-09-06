@@ -28,7 +28,8 @@ app.use('/api/users', userRoutes);
 // 404 handler
 app.use((req, res) => res.status(404).json({ message: 'ไม่พบ endpoint ที่ร้องขอ' }));
 
-// Global error handler
+// Global error handler — ต้องมี 4 args เพื่อให้ Express รู้ว่าเป็น error middleware
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('[Unhandled Error]', err);
   res.status(500).json({ message: 'เกิดข้อผิดพลาดที่ไม่คาดคิดในระบบ' });

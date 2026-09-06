@@ -27,9 +27,10 @@ function containsBlacklistedWord(password) {
 
 /**
  * @param {string} password
- * @param {string} email
+ * @param {string} email - สงวนไว้สำหรับกฎ "รหัสผ่านห้ามพ้องอีเมล" (callers ส่งค่ามาแล้ว)
  * @returns {string[]} errors
  */
+// eslint-disable-next-line no-unused-vars
 export function validatePassword(password, email = '') {
   const errors = [];
 

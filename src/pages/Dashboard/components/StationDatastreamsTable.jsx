@@ -1,14 +1,6 @@
-// src/pages/Dashboard/components/StationDatastreamsTable.jsx
-// แยกออกมาจาก StationsList.jsx เพื่อใช้ซ้ำได้ทั้งหน้า "สถานีตรวจวัด"
-// และหน้า "ภาพรวมสถานี" (ตอนเลือกดูสถานีใดสถานีหนึ่ง)
-//
-// รองรับโหมด interactive (ใช้ในหน้าภาพรวมสถานี): ส่ง selectedDatastreamId +
-// onSelectDatastream เข้ามา เพื่อให้กราฟ "ตัวแปรหลัก" ของ DashboardInsight.jsx
-// เปลี่ยนตามได้ทันที — ถ้าไม่ส่งสอง props นี้เข้ามา ตารางจะทำงานเหมือนเดิมทุกประการ
-//
-// แถวของตัวแปรที่ไม่เคยมี Observation เลย จะถูก "ปิด" ไม่ให้คลิก (ป้องกันการ
-// เลือกดูกราฟของตัวแปรที่ไม่มีข้อมูลจริง) พร้อมสไตล์แบบจางลงและ tooltip อธิบาย
-import * as React from "react";
+// ตารางตัวแปร (Datastream) ของสถานีหนึ่ง — โหมด interactive (ส่ง
+// selectedDatastreamId + onSelectDatastream) ให้คลิกแถวเพื่อเปลี่ยนกราฟตัวแปรหลัก
+// แถวที่ไม่เคยมี Observation จะถูกปิดไม่ให้คลิก
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -31,10 +23,6 @@ export default function StationDatastreamsTable({
   const { text, background, divider, primary } = theme.palette;
   const loc = thing.Locations?.[0]?.location?.coordinates;
   const interactive = typeof onSelectDatastream === "function";
-
-  console.log("[ StationDataStreamsTable: THING ]", thing);
-  
-  
 
   return (
     <TableContainer

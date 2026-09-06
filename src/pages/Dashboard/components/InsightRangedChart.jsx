@@ -1,9 +1,6 @@
-// src/pages/Dashboard/components/InsightRangedChart.jsx
-// กราฟหนึ่งตัวแปร (ใช้ทั้งเป็นกราฟหลักและกราฟย่อย/small multiple) ใน
-// Insight Dashboard — ไม่มีปุ่มเลือกช่วงเวลาของตัวเอง แต่รับ from/to จาก
-// DateRangePickerModern.jsx กลางของทั้งหน้าแทน เพื่อให้ทุกกราฟในหน้าเปลี่ยน
-// ช่วงเวลาไปพร้อมกันเมื่อผู้ใช้ปรับที่แถบด้านบนเพียงจุดเดียว
-import * as React from "react";
+// กราฟหนึ่งตัวแปร (กราฟหลักหรือ small multiple) ใน Insight Dashboard
+// รับ from/to จาก DateRangePickerModern กลางของหน้า ไม่มีตัวเลือกช่วงเวลาของตัวเอง
+import { useRef } from "react";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -13,6 +10,7 @@ import * as HighchartsReactModule from "highcharts-react-official";
 
 import Highcharts, { EXPORTING_DEFAULTS } from "../utils/highchartsSetup";
 import { useObservationsRange } from "../hooks/useObservationsRange";
+import ChartCardMenu from "./ChartCardMenu";
 
 const HighchartsReact =
   HighchartsReactModule.default?.default ||
@@ -30,8 +28,8 @@ export default function InsightRangedChart({ datastream, from, to, color }) {
 
   const unit = datastream?.unitOfMeasurement?.symbol || "";
   const varName = datastream?.ObservedProperty?.name || datastream?.name || "";
-  // สีประจำตัวของตัวแปรนี้ — ถ้าไม่ได้ระบุมา fallback เป็นสี primary ของธีมเดิม
   const seriesColor = color || primary.main;
+  const chartRef = useRef(null);
 
   const cardSx = {
     border: `1px solid ${divider}`,
@@ -109,6 +107,11 @@ export default function InsightRangedChart({ datastream, from, to, color }) {
         <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
           {varName}
         </Typography>
+        <ChartCardMenu
+          chartRef={chartRef}
+          disabled={fetching || rows.length === 0}
+          sx={{ ml: "auto" }}
+        />
       </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         {unit ? `หน่วย: ${unit}` : "แนวโน้มข้อมูลย้อนหลัง"} · {rows.length} จุดข้อมูล
@@ -131,16 +134,18 @@ export default function InsightRangedChart({ datastream, from, to, color }) {
             ไม่มีข้อมูลในช่วงเวลาที่เลือก
           </Typography>
         ) : (
-          // [แก้บัค] เดียวกับ WindRoseChart.jsx — บังคับ unmount/mount กราฟใหม่
-          // เสมอทุกครั้งที่ query เปลี่ยน (datastream + from/to) แทนที่จะพึ่ง
-          // chart.update() ของ highcharts-react-official ซึ่งบางครั้งไม่ repaint
-          // ให้ถูกต้องถ้า React batch การเปลี่ยน loading -> โหลดเสร็จเป็น commit
-          // เดียว จนกราฟไม่เคย unmount ระหว่างเปลี่ยนช่วงเวลาเลย
+          // key บังคับ unmount/mount กราฟใหม่ทุกครั้งที่ query เปลี่ยน — chart.update()
+          // ของ highcharts-react-official บางครั้งไม่ repaint เมื่อ React batch
+          // การเปลี่ยน loading กับผลลัพธ์เป็น commit เดียว (เหมือน WindRoseChart)
           <Box
             key={`${datastream?.["@iot.id"]}-${from}-${to}`}
             sx={{ width: "100%" }}
           >
-            <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+            <HighchartsReact
+              ref={chartRef}
+              highcharts={Highcharts}
+              options={chartOptions}
+            />
           </Box>
         )}
       </Box>

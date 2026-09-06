@@ -1,13 +1,6 @@
-// src/pages/Dashboard/components/MiniDateRangeCalendar.jsx
-// ปฏิทินเลือกช่วงวันที่แบบ custom — แทนที่ <input type="date"> เดิมที่เรียก
-// ปฏิทิน default ของเบราว์เซอร์ขึ้นมา (หน้าตาไม่ตรง theme และไม่ responsive)
-// ดีไซน์ตาม design tokens ของ src/theme/Theme.jsx โดยตรง (สี primary/secondary/
-// grey, shape.borderRadius, ตัวอักษร Kanit) ผ่าน useTheme() ทั้งหมด จึงไม่ต้อง
-// import BLUE/GRAY/SKY ตรง ๆ — เปลี่ยน Theme.jsx ที่เดียวก็ตามสีไปด้วยอัตโนมัติ
-//
-// วิธีใช้: คลิกวันแรก = จุดเริ่มต้นช่วง, คลิกวันที่สอง = จุดสิ้นสุดช่วง (ระหว่าง
-// เลือกจะ hover-preview ช่วงให้เห็นก่อน) แล้วกด "ใช้ช่วงนี้" เพื่อยืนยัน
-import * as React from "react";
+// ปฏิทินเลือกช่วงวันที่แบบ custom (UTC-based) ตาม theme tokens
+// คลิกวันแรก = จุดเริ่ม, คลิกวันที่สอง = จุดสิ้นสุด (hover-preview ระหว่างเลือก)
+import { useState, useMemo } from "react";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -37,18 +30,18 @@ function toEndOfDayISO(date) {
   return d.toISOString();
 }
 
-export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply, onCancel }) {
+export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply }) {
   const theme = useTheme();
-  const { primary, secondary, text, divider, background } = theme.palette;
+  const { primary, secondary, text, divider } = theme.palette;
 
-  const [viewMonth, setViewMonth] = React.useState(() =>
+  const [viewMonth, setViewMonth] = useState(() =>
     startOfMonthUTC(to || anchorDate || new Date())
   );
-  const [draftFrom, setDraftFrom] = React.useState(() => (from ? new Date(from) : null));
-  const [draftTo, setDraftTo] = React.useState(() => (to ? new Date(to) : null));
-  const [hoverDate, setHoverDate] = React.useState(null);
+  const [draftFrom, setDraftFrom] = useState(() => (from ? new Date(from) : null));
+  const [draftTo, setDraftTo] = useState(() => (to ? new Date(to) : null));
+  const [hoverDate, setHoverDate] = useState(null);
 
-  const grid = React.useMemo(
+  const grid = useMemo(
     () => buildMonthGrid(viewMonth, anchorDate),
     [viewMonth, anchorDate]
   );

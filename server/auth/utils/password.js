@@ -1,86 +1,11 @@
 import bcrypt from "bcrypt";
 import { fileURLToPath } from "url";
 
+// policy validator เดียวกับที่ frontend ใช้ — เก็บ implementation ไว้ที่เดียว
+import { validatePassword } from "./validatePassword.js";
+export { validatePassword };
+
 const SALT_ROUNDS = 12;
-
-const BLACKLIST = [
-  "password",
-  "password123",
-  "admin",
-  "administrator",
-  "qwerty",
-  "123456",
-  "12345678",
-  "111111",
-  "abcdef",
-];
-
-function escapeRegExp(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function containsBlacklistedWord(password) {
-  return BLACKLIST.some((word) => {
-    const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
-    return pattern.test(password);
-  });
-}
-
-/**
- * Validate password policy
- * @param {string} password
- * @param {string} email
- * @returns {string[]} errors
- */
-export function validatePassword(password, email = "") {
-  const errors = [];
-
-  if (!password) {
-    errors.push("กรุณากรอกรหัสผ่าน");
-    return errors;
-  }
-
-  // ความยาวต้องมากกว่า 10 ตัวอักษร
-  if (password.length < 10) {
-    errors.push("รหัสผ่านต้องมีความยาว 10 ตัวอักษร ขึ้นไป");
-  }
-
-  // ต้องมีตัวพิมพ์ใหญ่
-  if (!/[A-Z]/.test(password)) {
-    errors.push("ต้องมีตัวอักษรภาษาอังกฤษตัวพิมพ์ใหญ่");
-  }
-
-  // ต้องมีตัวพิมพ์เล็ก
-  if (!/[a-z]/.test(password)) {
-    errors.push("ต้องมีตัวอักษรภาษาอังกฤษตัวพิมพ์เล็ก");
-  }
-
-  // ต้องมีตัวเลข
-  if (!/[0-9]/.test(password)) {
-    errors.push("ต้องมีตัวเลขอย่างน้อย 1 ตัว");
-  }
-
-  // ต้องมี special character
-  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
-    errors.push("ต้องมีอักขระพิเศษอย่างน้อย 1 ตัว");
-  }
-
-  // ห้ามมี whitespace
-  if (/\s/.test(password)) {
-    errors.push("ห้ามมีช่องว่างในรหัสผ่าน");
-  }
-
-  // block อักษรซ้ำติดกัน
-  if (/(.)\1{2,}/.test(password)) {
-    errors.push("ห้ามใช้ตัวอักษรซ้ำติดกัน เช่น aaa หรือ 111");
-  }
-
-  if (containsBlacklistedWord(password)) {
-    errors.push("รหัสผ่านง่ายเกินไป");
-  }
-
-  return errors;
-}
 
 /**
  * Generate bcrypt hash

@@ -1,10 +1,7 @@
-// src/components/ProtectedRoute.jsx
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-
-import { Box, Paper, Typography, CircularProgress } from "@mui/material";
-
+import { Box, Paper, Typography } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
+import { useAuth } from "../context/auth-context";
 
 export default function ProtectedRoute({ requiredRole }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();

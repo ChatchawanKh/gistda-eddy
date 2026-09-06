@@ -1,10 +1,9 @@
-import * as React from "react";
+import { useCallback } from "react";
 import { useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
@@ -18,18 +17,12 @@ import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded';
 
-import Loading from "./Loading"
-
+import Loading from "./Loading";
 
 const STALE_HOURS = 24;
 const CRITICAL_HOURS = 72;
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
 
 function formatElapsed(hours) {
   if (!isFinite(hours)) return "ไม่เคยมีข้อมูล";
@@ -62,10 +55,6 @@ function formatLastSeen(isoString) {
   return lastSeenFormatter.format(d);
 }
 
-// ------------------------------------------------------------
-// Status config
-// ------------------------------------------------------------
-
 function getStatusConfig(theme, critical) {
   if (critical) {
     return {
@@ -88,24 +77,13 @@ function getStatusConfig(theme, critical) {
   };
 }
 
-// ------------------------------------------------------------
-// Component
-// ------------------------------------------------------------
-
 export default function AlertsView({ datastreams, loading }) {
   const theme = useTheme();
-
   const { text, background, divider } = theme.palette;
-
   const [searchParams, setSearchParams] = useSearchParams();
-
   const selectedStationId = searchParams.get("station") || "";
 
-  // ----------------------------------------------------------
-  // Station filter
-  // ----------------------------------------------------------
-
-  const handleSelectStation = React.useCallback(
+  const handleSelectStation = useCallback(
     (id) => {
       const next = new URLSearchParams(searchParams);
 
@@ -120,19 +98,7 @@ export default function AlertsView({ datastreams, loading }) {
     [searchParams, setSearchParams]
   );
 
-  // ----------------------------------------------------------
-  // Loading
-  // ----------------------------------------------------------
-
-  if (loading) {
-    return (
-      <Loading />
-    );
-  }
-
-  // ----------------------------------------------------------
-  // Stations
-  // ----------------------------------------------------------
+  if (loading) return <Loading />;
 
   const stations = Array.from(
     new Map(
@@ -146,10 +112,6 @@ export default function AlertsView({ datastreams, loading }) {
     name,
   }));
 
-  // ----------------------------------------------------------
-  // Filter
-  // ----------------------------------------------------------
-
   const filteredDatastreams = selectedStationId
     ? datastreams.filter(
         (ds) =>
@@ -157,17 +119,12 @@ export default function AlertsView({ datastreams, loading }) {
       )
     : datastreams;
 
-  // ----------------------------------------------------------
-  // Alerts
-  // ----------------------------------------------------------
-
   const alerts = filteredDatastreams
     .map((ds) => {
       const t = ds.Observations?.[0]?.phenomenonTime;
 
-      const hours = t
-        ? (Date.now() - new Date(t).getTime()) / 3600000
-        : Infinity;
+      // eslint-disable-next-line react-hooks/purity -- อายุข้อมูลต้องเทียบเวลาปัจจุบัน ณ ตอน render เพื่อคัดรายการที่ค้างจริง
+      const hours = t ? (Date.now() - new Date(t).getTime()) / 3600000 : Infinity;
 
       return {
         ds,
@@ -180,32 +137,16 @@ export default function AlertsView({ datastreams, loading }) {
     .filter((a) => a.stale)
     .sort((a, b) => b.hours - a.hours);
 
-  // ----------------------------------------------------------
-  // Summary
-  // ----------------------------------------------------------
-
-  const criticalCount = alerts.filter(
-    (a) => a.critical
-  ).length;
-
+  const criticalCount = alerts.filter((a) => a.critical).length;
   const warningCount = alerts.length - criticalCount;
-
   const affectedStations = new Set(
     alerts.map((a) => String(a.ds.thingId))
   ).size;
-
   const totalDatastreams = filteredDatastreams.length;
-
-  // ----------------------------------------------------------
-  // Render
-  // ----------------------------------------------------------
 
   return (
     <Box sx={{ width: "100%" }}>
-      {/* ======================================================
-          Header
-      ====================================================== */}
-
+      {/* Header */}
       <Box
         sx={{
           display: "flex",
@@ -286,10 +227,7 @@ export default function AlertsView({ datastreams, loading }) {
         </Box>
       </Box>
 
-      {/* ======================================================
-          Summary
-      ====================================================== */}
-
+      {/* Summary */}
       <Box
         sx={{
           display: "grid",
@@ -477,10 +415,7 @@ export default function AlertsView({ datastreams, loading }) {
         </Box>
       </Box>
 
-      {/* ======================================================
-          Filter + Result count
-      ====================================================== */}
-
+      {/* Filter + result count */}
       <Box
         sx={{
           display: "flex",
@@ -612,10 +547,7 @@ export default function AlertsView({ datastreams, loading }) {
         </Box>
       </Box>
 
-      {/* ======================================================
-          Content
-      ====================================================== */}
-
+      {/* Content */}
       {alerts.length === 0 ? (
         <Box
           sx={{
@@ -711,10 +643,7 @@ export default function AlertsView({ datastreams, loading }) {
                     gap: 2,
                   }}
                 >
-                  {/* --------------------------------------
-                        Left
-                    --------------------------------------- */}
-
+                  {/* Left */}
                   <Box
                     sx={{
                       display: "flex",
@@ -830,10 +759,7 @@ export default function AlertsView({ datastreams, loading }) {
                     </Box>
                   </Box>
 
-                  {/* --------------------------------------
-                        Status
-                    --------------------------------------- */}
-
+                  {/* Status */}
                   <Box
                     sx={{
                       display: "flex",

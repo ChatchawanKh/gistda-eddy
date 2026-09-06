@@ -1,16 +1,6 @@
-// src/pages/Dashboard/components/DateRangePickerModern.jsx
-// Date Range Picker แบบ Modern Material Design — แทนที่ DateRangeBar.jsx เดิม
-// ตามข้อกำหนด "Date Picker" ของ Insight Dashboard:
-//   - แสดงเป็น Component เดียว (ปุ่ม + panel เลือกช่วงเวลา ไม่แยกเป็นหลายช่อง)
-//   - มีไอคอน Calendar และแสดงช่วงวันที่ในรูปแบบอ่านง่ายบนปุ่ม
-//   - รองรับ Preset: วันนี้ / เมื่อวาน / 7 วันล่าสุด / 30 วันล่าสุด / 90 วันล่าสุด /
-//     เดือนนี้ / เดือนที่แล้ว / กำหนดเอง (Custom Range) ผ่านปฏิทินแบบ custom
-//     (ดู MiniDateRangeCalendar.jsx) แทนปฏิทิน default ของเบราว์เซอร์
-//   - ดีไซน์ตาม design tokens ของ src/theme/Theme.jsx ทั้งหมด (ใช้ theme.palette
-//     ล้วน ๆ ไม่ hardcode สี) จึงรองรับ Dark/Light Theme โดยอัตโนมัติ
-//   - Responsive: จอเล็กพับ panel เป็นแนวตั้งและกว้างเกือบเต็มจอ
-//   - เลือกแล้วอัปเดตทันทีผ่าน onChange (React state ล้วน ๆ ไม่ reload หน้า)
-import * as React from "react";
+// Date Range Picker: ปุ่ม + Popover (คอลัมน์ preset + ปฏิทิน custom)
+// preset: วันนี้ / เมื่อวาน / 7-30-90 วันล่าสุด / เดือนนี้ / เดือนที่แล้ว / กำหนดเอง
+import { useState, useMemo } from "react";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import Box from "@mui/material/Box";
@@ -27,12 +17,12 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
   const theme = useTheme();
   const { background, divider, text, primary } = theme.palette;
   const isMobile = useMediaQuery("(max-width:600px)");
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
   // preset ผูกกับ "วันที่ล่าสุดที่มีข้อมูลจริง" (anchorDate) ไม่ใช่วันนี้จริง ๆ
-  const presets = React.useMemo(() => buildDatePresets(anchorDate), [anchorDate]);
-  const activeKey = React.useMemo(() => matchPreset(presets, from, to), [presets, from, to]);
+  const presets = useMemo(() => buildDatePresets(anchorDate), [anchorDate]);
+  const activeKey = useMemo(() => matchPreset(presets, from, to), [presets, from, to]);
 
   const handlePreset = (preset) => {
     onChange(preset.range);
@@ -55,13 +45,8 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
           fontSize: 13,
           color: text.secondary,
           border: `1px solid ${divider}`,
-          // ml: 0.25,
-          // mr: 0.5,
           textTransform: "none",
-          // fontSize: 13,
           fontWeight: 400,
-          // color: text.primary,
-          // borderColor: divider,
           bgcolor: background.paper,
           px: 1.5,
           py: 0.85,

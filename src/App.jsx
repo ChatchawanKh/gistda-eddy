@@ -1,9 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Theme from './style/Theme'; // ← แก้ path ให้ตรงกับที่คุณเก็บไฟล์ theme.jsx จริง
+import Theme from './style/Theme';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
@@ -32,10 +31,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Dashboard />} />
-            </Route> */}
-
+            {/* auth gating on "/" intentionally disabled for now */}
             <Route path="/" element={<Dashboard />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

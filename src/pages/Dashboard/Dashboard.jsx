@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -8,7 +8,7 @@ import Drawer from "@mui/material/Drawer";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth-context";
 import UserManagementSection from "./UserManagementSection";
 import SettingsSection from "./SettingsSection";
 
@@ -28,20 +28,19 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
 
-  const [open, setOpen] = React.useState(true);
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-   const [searchParams, setSearchParams] = useSearchParams();
+  const [open, setOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeKey = searchParams.get("view") || "dashboard";
   const isMobile = useMediaQuery("(max-width:900px)");
 
-  const navSections = React.useMemo(() => buildNavSections(isAdmin), [isAdmin]);
+  const navSections = useMemo(() => buildNavSections(isAdmin), [isAdmin]);
   const width = open ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
 
   const { things, loading, error } = useThings();
-  const datastreams = React.useMemo(() => flattenDatastreams(things), [things]);
+  const datastreams = useMemo(() => flattenDatastreams(things), [things]);
 
-  // สร้างข้อมูลโปรไฟล์จาก user จริง (แทนค่า hardcode เดิม) — ไม่แก้ไข logic
-  const profile = React.useMemo(() => {
+  const profile = useMemo(() => {
     const displayName = user?.full_name || user?.email || "ผู้ใช้งาน";
     const roleLabel = user?.role === "admin" ? "Admin" : "User";
     const initials =
@@ -54,10 +53,10 @@ export default function Dashboard() {
     return { displayName, roleLabel, initials };
   }, [user]);
 
-    const handleSelect = (key) => {
+  const handleSelect = (key) => {
     const next = new URLSearchParams(searchParams);
     if (key === "dashboard") {
-      next.delete("view"); // ค่า default ไม่ต้องโชว์ query param ให้ดู URL สะอาด
+      next.delete("view"); // ค่า default ไม่ต้องโชว์ใน URL
     } else {
       next.set("view", key);
     }
@@ -166,7 +165,6 @@ export default function Dashboard() {
           bgcolor: background.paper,
         }}
       >
-        {/* ----- ส่วนนี้ตามคำสั่งเดิม: ไม่แก้ไข logic การเรียก UserManagementSection / SettingsSection ----- */}
         {activeKey === ADMIN_USERS_KEY && isAdmin ? (
           <UserManagementSection />
         ) : activeKey === "settings" ? (

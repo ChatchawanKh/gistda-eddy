@@ -1,10 +1,7 @@
-import * as React from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// ---------------------------------------------------------------------------
 // Design tokens
-// ---------------------------------------------------------------------------
 const BLUE = {
   50: '#EAF2FF',
   100: '#D6E4FF',
@@ -133,6 +130,43 @@ const theme = createTheme({
 
   shadows: buildShadows(),
 
+  // ---------------------------------------------------------------------------
+  // Custom tokens (นอกเหนือจาก MUI spec) — ใช้ร่วมกันทั่วแอป
+  // ---------------------------------------------------------------------------
+  custom: {
+    // ปุ่มเมนู 3 จุด (MoreVertRoundedIcon) ที่มุมขวาของหัวการ์ดกราฟทุกใบ
+    // ทุกกราฟใช้ style ก้อนเดียวกันนี้ (BarChart / Heatmap / WindRose / RangedChart)
+    chartMenuButton: {
+      color: GRAY[500],
+      borderRadius: '8px',
+      padding: '4px',
+      transition: 'background-color 120ms ease, color 120ms ease',
+      '&:hover': { backgroundColor: GRAY[100], color: GRAY[700] },
+      '&.Mui-focusVisible': { backgroundColor: GRAY[100] },
+      '&.Mui-disabled': { color: GRAY[300] },
+    },
+    // Paper ของ dropdown menu ให้เข้าชุดกับเมนู export เดิมของ Highcharts
+    chartMenuPaper: {
+      borderRadius: '12px',
+      border: `1px solid ${GRAY[200]}`,
+      boxShadow: SHADOW_LG,
+      padding: '6px',
+      '& .MuiList-root': { padding: 0 },
+      '& .MuiMenuItem-root': {
+        fontSize: '12.5px',
+        fontWeight: 500,
+        color: GRAY[700],
+        borderRadius: '8px',
+        padding: '8px 12px',
+        margin: '1px 0',
+        minHeight: 'auto',
+        '& .MuiListItemIcon-root': { minWidth: 28, color: 'inherit' },
+        '& .MuiSvgIcon-root': { fontSize: 18 },
+        '&:hover': { backgroundColor: BLUE[50], color: BLUE[700] },
+      },
+    },
+  },
+
   typography: {
     fontFamily: '"Kanit", "Noto Sans Thai", sans-serif',
 
@@ -194,6 +228,9 @@ const theme = createTheme({
           color: BLUE[600],
           textDecoration: 'none',
         },
+        // ดูกราฟแบบเต็มจอ (Highcharts full-screen) ให้พื้นหลังเป็นสีขาวเสมอ
+        ':fullscreen': { backgroundColor: '#FFFFFF' },
+        ':-webkit-full-screen': { backgroundColor: '#FFFFFF' },
       },
     },
 
@@ -470,9 +507,6 @@ const theme = createTheme({
   },
 });
 
-// ---------------------------------------------------------------------------
-// Provider wrapper
-// ---------------------------------------------------------------------------
 export default function Theme({ children }) {
   return (
     <ThemeProvider theme={theme}>
@@ -481,5 +515,3 @@ export default function Theme({ children }) {
     </ThemeProvider>
   );
 }
-
-export { theme };

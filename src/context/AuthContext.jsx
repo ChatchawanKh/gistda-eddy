@@ -1,14 +1,12 @@
-// src/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../api/axiosClient';
-
-const AuthContext = createContext(null);
+import { AuthContext } from './auth-context';
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);       // { user_id, email, full_name, role }
-  const [loading, setLoading] = useState(true);  // true ระหว่างเช็ค session ตอนโหลดแอปครั้งแรก
+  const [user, setUser] = useState(null); // { user_id, email, full_name, role }
+  const [loading, setLoading] = useState(true); // true ระหว่างเช็ค session ตอนโหลดแอปครั้งแรก
 
-  // เช็ค session เดิม (กรณี refresh หน้าเว็บ) — ใช้ refreshToken cookie ขอ access token ใหม่
+  // ใช้ refreshToken cookie ขอ access token ใหม่ (กรณี refresh หน้าเว็บ)
   const restoreSession = useCallback(async () => {
     try {
       const { data } = await axiosClient.post('/auth/refresh');
@@ -24,6 +22,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restore session: setState เกิดหลัง await (async lifecycle ปกติ)
     restoreSession();
   }, [restoreSession]);
 
@@ -43,7 +42,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ดึงข้อมูล user ล่าสุดจาก server มาอัปเดต state (ใช้หลังแก้โปรไฟล์ในหน้า Settings)
+  // ดึงข้อมูล user ล่าสุดจาก server (ใช้หลังแก้โปรไฟล์ในหน้า Settings)
   async function refreshUser() {
     const { data } = await axiosClient.get('/auth/me');
     setUser(data.user);
@@ -61,10 +60,4 @@ export function AuthProvider({ children }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth ต้องถูกเรียกภายใน <AuthProvider>');
-  return ctx;
 }

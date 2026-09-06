@@ -1,17 +1,13 @@
-// src/pages/Auth/AuthLayout.jsx
 // เลย์เอาต์กลางสำหรับหน้า Login / ForgotPassword / ResetPassword
-// ใช้ token จาก theme.jsx ทั้งหมด (สี, radius, typography) ไม่มี hardcode style แยกต่างหาก
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import { useTheme, alpha } from "@mui/material/styles";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
 export default function AuthLayout({ title, subtitle, children }) {
   const theme = useTheme();
   const { primary, background, text } = theme.palette;
-  const radius = theme.shape.borderRadius;
 
   return (
     <Box
@@ -40,7 +36,6 @@ export default function AuthLayout({ title, subtitle, children }) {
                 mr: 1.5
               }}
             >
-              {/* <AutoAwesomeRoundedIcon sx={{ color: primary.contrastText, fontSize: 20 }} /> */}
               <Typography sx={{ color: primary.contrastText, fontSize: 18 }}>
                 G
               </Typography>

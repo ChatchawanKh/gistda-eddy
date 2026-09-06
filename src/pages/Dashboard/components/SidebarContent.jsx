@@ -1,6 +1,3 @@
-// src/pages/Dashboard/components/SidebarContent.jsx
-// แยกออกมาจาก Dashboard.jsx — logic และโครงสร้างเดิมไม่เปลี่ยนแปลง
-import * as React from "react";
 import { useTheme, alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
@@ -13,7 +10,6 @@ import IconButton from "@mui/material/IconButton";
 import Avatar from "@mui/material/Avatar";
 import Tooltip from "@mui/material/Tooltip";
 
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -73,10 +69,7 @@ export default function SidebarContent({
               boxShadow: `0 3px 10px ${alpha(primary.main, 0.35)}`,
             }}
           >
-            {/* <AutoAwesomeRoundedIcon
-              sx={{ color: primary.contrastText, fontSize: 18 }}
-            /> */}
-            <Typography sx={{ color: primary.contrastText, fontSize: 18 }} >
+            <Typography sx={{ color: primary.contrastText, fontSize: 18 }}>
               G
             </Typography>
           </Box>

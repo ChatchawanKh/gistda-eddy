@@ -1,33 +1,7 @@
-// src/pages/Dashboard/components/StationsMap.jsx
-// แผนที่ภาพรวมสถานี ใช้ leaflet + react-leaflet
-// ติดตั้งก่อนใช้งาน: npm install leaflet react-leaflet
-//
-// หมุดสีเขียว  = มีข้อมูลอัปเดตภายใน 24 ชม.
-// หมุดสีแดง    = ไม่มีข้อมูลใหม่เกิน 24 ชม.
-// หมุดสีเทา    = ยังไม่เคยมี Observation
-// คลิกหมุดเพื่อเลือกดูรายละเอียดสถานีนั้น (ผูกกับ query param ?station=)
-//
-// ฟีเจอร์เพิ่มเติมของแผนที่:
-//   - Zoom ด้วยเมาส์: เปิด scrollWheelZoom (หมุนล้อเมาส์ซูม) + ดับเบิลคลิกซูม
-//     ของ Leaflet เอง ส่วนปุ่ม +/- ปิดปุ่ม default ของ Leaflet แล้วสร้างปุ่ม
-//     custom (มุมซ้ายบน) ให้หน้าตาตรงธีมแอปแทน พร้อมปุ่ม "หน้าแรก" (มุมซ้ายบน
-//     เช่นกัน) ไว้ซูมออกไปดูภาพรวมประเทศไทยทั้งหมด
-//   - สลับ Basemap: ปุ่มไอคอนแผนที่/ดาวเทียม (มุมซ้ายบน ต่อจากปุ่มหน้าแรก)
-//     สลับระหว่างไทล์ถนนของ OpenStreetMap กับภาพถ่ายดาวเทียมของ Esri
-//     (World_Imagery) เวลาอยู่โหมดดาวเทียมจะซ้อนเลเยอร์ label ชื่อสถานที่/
-//     ถนนแบบโปร่งใสทับไว้ด้วย (Esri Reference/World_Boundaries_and_Places)
-//     เพื่อให้ยังอ่านชื่อสถานที่ได้ คล้ายโหมด Hybrid ของ Google Maps
-//   - ขยาย/ย่อความสูง: สลับความสูงกล่องแผนที่ระหว่างค่าเริ่มต้นกับค่าที่สูงขึ้น
-//     แล้วย่อกลับเท่าเดิมได้ (ปุ่มไอคอนลูกศรขึ้น-ลง มุมขวาบน)
-//   - Fullscreen: ใช้ browser Fullscreen API ตรง ๆ (ไม่ต้องเพิ่ม dependency
-//     ปลั๊กอิน leaflet.fullscreen) พร้อม fallback สำหรับ Safari/IE ที่ใช้ชื่อ
-//     method แบบ vendor-prefixed (มุมขวาบน)
-//
-// สำคัญ: ทุกครั้งที่กล่องแผนที่เปลี่ยนขนาด (ขยาย/ย่อ/เข้า-ออก fullscreen) ต้อง
-// เรียก map.invalidateSize() เพราะ Leaflet จำขนาด container ไว้ตอนสร้างแผนที่
-// ครั้งแรก ไม่งั้นจะเห็นไทล์แสดงผลผิดตำแหน่ง/มีพื้นที่ว่างเทาๆ (ดู
-// MapResizeHandler ด้านล่าง)
-import * as React from "react";
+// แผนที่ภาพรวมสถานี (leaflet + react-leaflet)
+// หมุด: เขียว = อัปเดตภายใน 24 ชม., แดง = เกิน 24 ชม., เทา = ไม่เคยมี Observation
+// รองรับ zoom/home/สลับ basemap (street/satellite)/ขยายความสูง/fullscreen
+import { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -60,10 +34,7 @@ const THAILAND_BOUNDS = [
   [20.6, 105.7],
 ];
 
-// ---- นิยาม Basemap ที่เลือกสลับได้ -----------------------------------------
-// street    = ไทล์ถนนของ OpenStreetMap (ค่าเริ่มต้นเดิม)
-// satellite = ภาพถ่ายดาวเทียมของ Esri World Imagery พร้อมเลเยอร์ label
-//             (ชื่อสถานที่/เส้นถนน) ซ้อนทับไว้ให้ยังอ่านหมุด/ตำแหน่งได้ง่าย
+// street = OpenStreetMap, satellite = Esri World Imagery + เลเยอร์ label
 const BASEMAPS = {
   street: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -104,7 +75,7 @@ function getLatestTime(thing) {
     .reverse()[0];
 }
 
-// ---- ตัวช่วยเรื่อง Fullscreen API (มี fallback แบบ vendor-prefixed) --------
+// Fullscreen API + fallback แบบ vendor-prefixed (Safari/IE)
 function getFullscreenElement() {
   return (
     document.fullscreenElement ||
@@ -133,7 +104,7 @@ function exitFullscreen() {
 // ปรับมุมมองแผนที่ให้เห็นทุกหมุดพอดีตอนโหลดครั้งแรก
 function FitAllStations({ points }) {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     if (points.length === 0) return;
     if (points.length === 1) {
       map.setView(points[0], 12);
@@ -148,7 +119,7 @@ function FitAllStations({ points }) {
 // เลื่อนแผนที่ไปหาสถานีที่ถูกเลือก (จาก dropdown หรือคลิกการ์ด)
 function FlyToSelected({ point }) {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     if (point) map.flyTo(point, 13, { duration: 0.6 });
   }, [point, map]);
   return null;
@@ -159,7 +130,7 @@ function FlyToSelected({ point }) {
 // ผิดตั้งแต่ตอนที่ยังเปลี่ยนขนาดไม่เสร็จ
 function MapResizeHandler({ resizeKey }) {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     const t = setTimeout(() => map.invalidateSize(), HEIGHT_TRANSITION_MS + 10);
     return () => clearTimeout(t);
   }, [resizeKey, map]);
@@ -171,7 +142,7 @@ function MapResizeHandler({ resizeKey }) {
 // ตรงนี้แทนการใช้ useMap() ตรง ๆ)
 function MapInstanceSetter({ onReady }) {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     onReady(map);
   }, [map, onReady]);
   return null;
@@ -191,15 +162,15 @@ export default function StationsMap({
     background,
   } = theme.palette;
 
-  const [isExpanded, setIsExpanded] = React.useState(false);
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const [basemap, setBasemap] = React.useState("street"); // "street" | "satellite"
-  const [mapInstance, setMapInstance] = React.useState(null);
-  const wrapperRef = React.useRef(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [basemap, setBasemap] = useState("street"); // "street" | "satellite"
+  const [mapInstance, setMapInstance] = useState(null);
+  const wrapperRef = useRef(null);
 
   // ซิงก์ state กับสถานะ fullscreen จริงของเบราว์เซอร์ เผื่อผู้ใช้กด Esc
   // ออกจาก fullscreen เองโดยไม่ผ่านปุ่มของเรา
-  React.useEffect(() => {
+  useEffect(() => {
     const handleChange = () => {
       setIsFullscreen(getFullscreenElement() === wrapperRef.current);
     };
@@ -279,9 +250,7 @@ export default function StationsMap({
         "& .leaflet-container": { height: "100%", width: "100%" },
       }}
     >
-      {/* ปุ่ม zoom in/out + หน้าแรก + สลับ basemap ลอยมุมซ้ายบน — แทนที่ปุ่ม
-          +/- แบบ default ของ Leaflet (ปิดด้วย zoomControl={false} ด้านล่าง)
-          ด้วยดีไซน์เดียวกับปุ่มฝั่งขวา (การ์ดโค้งมน มีเงาบาง ๆ) */}
+      {/* ปุ่ม zoom/home/สลับ basemap (มุมซ้ายบน) แทนปุ่ม default ของ Leaflet */}
       <Box
         sx={{
           position: "absolute",
@@ -405,8 +374,7 @@ export default function StationsMap({
         </Tooltip>
       </Box>
 
-      {/* ปุ่มควบคุมขนาด/fullscreen ลอยมุมขวาบน — zIndex สูงกว่า pane/control
-          ของ Leaflet เอง (~400-1000) เพื่อไม่ให้แผนที่บังปุ่ม */}
+      {/* ปุ่มขยายความสูง/fullscreen (มุมขวาบน) */}
       <Box
         sx={{
           position: "absolute",
@@ -509,9 +477,8 @@ export default function StationsMap({
           if (!position) return null;
 
           const latest = getLatestTime(t);
-          const isStale = latest
-            ? Date.now() - new Date(latest).getTime() > STALE_MS
-            : true;
+          // eslint-disable-next-line react-hooks/purity -- สีหมุดสะท้อนความ stale เทียบเวลาปัจจุบัน ณ ตอน render โดยตั้งใจ
+          const isStale = latest ? Date.now() - new Date(latest).getTime() > STALE_MS : true;
           const color = !latest
             ? theme.palette.grey?.[500] || "#9e9e9e"
             : isStale

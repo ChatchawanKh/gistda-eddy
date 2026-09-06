@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useLayoutEffect } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -35,19 +35,10 @@ export default function ConfirmDialog({
 }) {
   const theme = useTheme();
 
-  // ===== แคช props ล่าสุดไว้ตอนที่ open === true =====
-  // สาเหตุของบั๊ก "ปิดแล้ว UI ค้างสีน้ำเงิน": หลายจุดที่เรียกใช้ ConfirmDialog
-  // คำนวณ props (โดยเฉพาะ severity) มาจาก state ตัวหนึ่ง เช่น
-  //   severity={statusTarget?.is_active ? "warning" : "info"}
-  //   onCancel={() => setStatusTarget(null)}
-  // พอกดปิด state ต้นทาง (statusTarget) จะถูกเคลียร์เป็น null "ทันที" ทำให้
-  // severity เปลี่ยนไปเป็นค่า fallback ("info" = สีน้ำเงิน) ก่อน Dialog ของ MUI
-  // จะเล่น exit animation จบ (~225ms) จึงเห็น dialog กระพริบเปลี่ยนสีตอนกำลังปิด
-  //
-  // ทางแก้: เก็บ props ที่ได้รับล่าสุดตอน open=true ไว้ใน state (ผ่าน useEffect
-  // ไม่ใช่การอ่าน/เขียน ref ระหว่าง render ซึ่ง React ห้ามไว้) แล้วใช้ค่านั้น
-  // render ต่อระหว่างช่วง exit transition แทนที่จะอ่านค่าที่เปลี่ยนไปแล้วสดๆ
-  const [displayed, setDisplayed] = React.useState({
+  // แคช props ล่าสุดตอน open=true แล้วใช้ค่านั้น render ต่อระหว่าง exit animation
+  // ของ MUI (~225ms) มิฉะนั้น dialog จะกระพริบเปลี่ยนสีเมื่อ caller เคลียร์ state
+  // ต้นทาง (เช่น severity) ทันทีที่กดปิด
+  const [displayed, setDisplayed] = useState({
     title,
     message,
     confirmLabel,
@@ -55,12 +46,11 @@ export default function ConfirmDialog({
     severity,
   });
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- ตั้งใจ snapshot props ไว้ตอน open=true เพื่อคงค่าระหว่าง exit animation
       setDisplayed({ title, message, confirmLabel, cancelLabel, severity });
     }
-    // ตอน open เป็น false ตั้งใจไม่อัปเดต เพื่อคงค่าล่าสุดไว้ระหว่าง exit animation
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, title, message, confirmLabel, cancelLabel, severity]);
 
   const color =

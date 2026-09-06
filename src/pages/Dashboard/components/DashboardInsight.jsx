@@ -1,12 +1,10 @@
-import * as React from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
@@ -34,7 +32,6 @@ import StationDatastreamsTable from "./StationDatastreamsTable";
 import InsightRangedChart from "./InsightRangedChart";
 import WindRoseChart from "./WindRoseChart";
 import BarChartCard from "./BarChartCard";
-import DonutChartCard from "./DonutChartCard";
 import HeatmapChartCard from "./HeatmapChartCard";
 import InsightSummaryBar from "./InsightSummaryBar";
 import DateRangePickerModern from "./DateRangePickerModern";
@@ -55,8 +52,7 @@ import {
 } from "../utils/insightSummary";
 import { buildDatePresets } from "../utils/dateRangePresets";
 import { getChartColor } from "../utils/chartColors";
-
-import Loading from "./Loading"
+import Loading from "./Loading";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -67,11 +63,10 @@ export default function DashboardInsight({ things, loading, error }) {
   const selectedStationId = searchParams.get("station") || "";
   const selectedDatastreamId = searchParams.get("ds") || "";
   // มุมมองตอนยังไม่เลือกสถานี: การ์ดสรุป หรือตารางละเอียดทุกสถานี
-  const [viewMode, setViewMode] = React.useState("cards");
+  const [viewMode, setViewMode] = useState("cards");
 
-  // วันที่ล่าสุดที่มีข้อมูลจริงในระบบ — ใช้เป็นฐานของทุก preset ช่วงเวลา และ
-  // แสดงในแบนเนอร์ "Latest Data" (ไม่ใช้วันที่ปัจจุบันของเครื่องผู้ใช้)
-  const latestAvailableDate = React.useMemo(
+  // วันที่ล่าสุดที่มีข้อมูลจริงในระบบ — ฐานของทุก preset ช่วงเวลา (ไม่ใช้วันที่เครื่องผู้ใช้)
+  const latestAvailableDate = useMemo(
     () => findLatestAvailableDate(things),
     [things],
   );
@@ -99,20 +94,19 @@ export default function DashboardInsight({ things, loading, error }) {
     },
   };
 
-  // ช่วงเวลากลางของทั้งหน้า — default "7 วันล่าสุด" นับจากวันที่ล่าสุดที่มี
-  // ข้อมูลจริง ตั้งค่าเริ่มต้นแค่ครั้งเดียวหลังรู้ latestAvailableDate แล้ว
-  // เพื่อไม่ให้ override ช่วงเวลาที่ผู้ใช้เลือกเองในภายหลัง
-  const [range, setRange] = React.useState(
+  // ช่วงเวลากลางของทั้งหน้า — default "7 วันล่าสุด" จาก latestAvailableDate
+  // ตั้งครั้งเดียวหลังรู้ค่านั้น เพื่อไม่ override ช่วงเวลาที่ผู้ใช้เลือกเองภายหลัง
+  const [range, setRange] = useState(
     () => buildDatePresets(new Date())[2].range,
   );
-  const didInitRange = React.useRef(false);
-  React.useEffect(() => {
+  const didInitRange = useRef(false);
+  useEffect(() => {
     if (didInitRange.current || !latestAvailableDate) return;
     didInitRange.current = true;
-    setRange(buildDatePresets(latestAvailableDate)[2].range); // "7 วันล่าสุด"
+    setRange(buildDatePresets(latestAvailableDate)[2].range);
   }, [latestAvailableDate]);
 
-  const handleSelectStation = React.useCallback(
+  const handleSelectStation = useCallback(
     (id) => {
       const currentStation = searchParams.get("station") || "";
       const next = new URLSearchParams(searchParams);
@@ -129,7 +123,7 @@ export default function DashboardInsight({ things, loading, error }) {
     [searchParams, setSearchParams],
   );
 
-  const handleSelectDatastream = React.useCallback(
+  const handleSelectDatastream = useCallback(
     (ds) => {
       if (!ds) return;
       const next = new URLSearchParams(searchParams);
@@ -139,7 +133,7 @@ export default function DashboardInsight({ things, loading, error }) {
     [searchParams, setSearchParams],
   );
 
-  const handleJumpToDatastream = React.useCallback(
+  const handleJumpToDatastream = useCallback(
     (ds) => {
       if (!ds) return;
       const next = new URLSearchParams(searchParams);
@@ -150,9 +144,8 @@ export default function DashboardInsight({ things, loading, error }) {
     [searchParams, setSearchParams],
   );
 
-  // เมื่อเปลี่ยนสถานี (หรือข้อมูลโหลดเสร็จ) และยังไม่มีตัวแปรที่ valid อยู่ใน
-  // URL ให้ default ไปที่ตัวแปรแรกของสถานีนั้นโดยอัตโนมัติ
-  React.useEffect(() => {
+  // เปลี่ยนสถานีแล้วถ้าตัวแปรใน URL ไม่ valid ให้ default ไปตัวแปรแรกของสถานีนั้น
+  useEffect(() => {
     if (!selectedStationId) return;
     const thing = things.find(
       (t) => String(t["@iot.id"]) === String(selectedStationId),
@@ -213,15 +206,14 @@ export default function DashboardInsight({ things, loading, error }) {
     range.to,
   );
 
-  const primarySummary = React.useMemo(
+  const primarySummary = useMemo(
     () => summarizeObservations(primaryRows),
     [primaryRows],
   );
   const primaryUnit = primaryDatastream?.unitOfMeasurement?.symbol || "";
   const primaryName =
     primaryDatastream?.ObservedProperty?.name || primaryDatastream?.name || "";
-  // สีประจำตัวของตัวแปรหลักที่กำลังดูอยู่ — ใช้ร่วมกันทั้ง 3 กราฟ (Time Series,
-  // Bar รายวัน, Heatmap) ของตัวแปรเดียวกัน เพื่อให้รู้ทันทีว่าเป็นชุดเดียวกัน
+  // สีประจำตัวแปรหลัก — ใช้ร่วมกันทั้ง 3 กราฟของตัวแปรเดียวกัน
   const primaryColor = getChartColor(
     primaryDatastream?.["@iot.id"],
     primary.main,
@@ -229,15 +221,8 @@ export default function DashboardInsight({ things, loading, error }) {
 
   const noStations = things.length === 0;
 
-  if (loading) {
-    return (
-      <Loading/>
-    );
-  }
-
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
+  if (loading) return <Loading />;
+  if (error) return <Alert severity="error">{error}</Alert>;
 
   const overviewCards = [
     {
@@ -474,16 +459,6 @@ export default function DashboardInsight({ things, loading, error }) {
               mb: 1.5,
             }}
           >
-            {/* <Typography
-            sx={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: text.secondary,
-              mr: 0.5,
-            }}
-          >
-            ภาพรวมระบบ:
-          </Typography> */}
             {overviewCards.map((c) => (
               <Chip
                 key={c.label}
@@ -500,10 +475,7 @@ export default function DashboardInsight({ things, loading, error }) {
                     >
                       {c.label}
                     </Box>
-                    <Box
-                      component="span"
-                      sx={{ fontWeight: 600, bgcolr: "red" }}
-                    >
+                    <Box component="span" sx={{ fontWeight: 600 }}>
                       {c.value}
                     </Box>
                   </Box>
@@ -564,11 +536,7 @@ export default function DashboardInsight({ things, loading, error }) {
                 </Alert>
               )}
 
-              {/* โซน "รายละเอียดตัวแปรที่กำลังดู" — ห่อด้วยกรอบ/พื้นหลังโทนสี
-                  primary อ่อน ๆ ให้แยกออกจากโซน "ตัวแปรอื่น ๆ" ด้านล่างอย่าง
-                  ชัดเจน (ทั้งสีพื้นหลัง กรอบ และหัวข้อ) ไม่ใช่แค่ระยะห่างเฉย ๆ
-                  ภายในจัด Priority-based layout: Wind Rose ก่อนเสมอถ้าสถานีมี
-                  ข้อมูลลม เพราะเป็นภาพรวมที่อ่านง่ายและสำคัญที่สุด */}
+              {/* โซนรายละเอียดตัวแปรหลัก — Wind Rose มาก่อนถ้าสถานีมีข้อมูลลม */}
               <Box
                 sx={{
                   border: `1px solid ${primary.main}33`,
@@ -652,9 +620,7 @@ export default function DashboardInsight({ things, loading, error }) {
                 </Box>
               </Box>
 
-              {/* โซน "ตัวแปรอื่น ๆ" — แยกออกจากโซนรายละเอียดด้านบนอย่างชัดเจน
-                  ด้วยหัวข้อ + คำอธิบายของตัวเอง (ไม่มีกรอบสีไฮไลต์ เพื่อให้ดู
-                  เป็นข้อมูลรอง ไม่ใช่ตัวแปรหลักที่กำลังพิจารณาอยู่) */}
+              {/* โซนตัวแปรอื่น ๆ (small multiples) — ข้อมูลรอง ไม่มีกรอบไฮไลต์ */}
               {otherDatastreams.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Box
@@ -794,9 +760,8 @@ export default function DashboardInsight({ things, loading, error }) {
                     .filter(Boolean)
                     .sort()
                     .reverse()[0];
-                  const isStale = latest
-                    ? Date.now() - new Date(latest).getTime() > STALE_MS
-                    : true;
+                  // eslint-disable-next-line react-hooks/purity -- staleness badge เทียบเวลาปัจจุบัน ณ ตอน render โดยตั้งใจ
+                  const isStale = latest ? Date.now() - new Date(latest).getTime() > STALE_MS : true;
 
                   return (
                     <Box

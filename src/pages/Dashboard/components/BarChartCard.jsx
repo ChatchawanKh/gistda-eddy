@@ -1,8 +1,5 @@
-// src/pages/Dashboard/components/BarChartCard.jsx
-// Bar/Column Chart: ค่าเฉลี่ยรายวันของ "ตัวแปรหลัก" ที่กำลังเลือกอยู่ ภายใน
-// ช่วงเวลาที่เลือกบน DateRangePickerModern — ช่วยเห็นแนวโน้มรายวันได้ชัดกว่า
-// กราฟเส้นเมื่อดูช่วงเวลายาว (เช่น 30/90 วัน) ส่วนหนึ่งของ Multi-chart Dashboard
-import * as React from "react";
+// Column Chart: ค่าเฉลี่ยรายวันของตัวแปรหลักในช่วงเวลาที่เลือก
+import { useMemo, useRef } from "react";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -10,6 +7,7 @@ import * as HighchartsReactModule from "highcharts-react-official";
 
 import Highcharts, { EXPORTING_DEFAULTS } from "../utils/highchartsSetup";
 import { groupDailyAverage } from "../utils/insightSummary";
+import ChartCardMenu from "./ChartCardMenu";
 
 const HighchartsReact =
   HighchartsReactModule.default?.default ||
@@ -29,8 +27,9 @@ export default function BarChartCard({
   const theme = useTheme();
   const { text, background, divider, primary } = theme.palette;
   const seriesColor = color || primary.main;
+  const chartRef = useRef(null);
 
-  const daily = React.useMemo(() => groupDailyAverage(rows), [rows]);
+  const daily = useMemo(() => groupDailyAverage(rows), [rows]);
 
   const cardSx = {
     border: `1px solid ${divider}`,
@@ -100,6 +99,11 @@ export default function BarChartCard({
         <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
           ค่าเฉลี่ยรายวัน — {variableName || "ตัวแปรหลัก"}
         </Typography>
+        <ChartCardMenu
+          chartRef={chartRef}
+          disabled={loading || daily.length === 0}
+          sx={{ ml: "auto" }}
+        />
       </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         {unit ? `หน่วย: ${unit}` : "แนวโน้มค่าเฉลี่ยต่อวัน"} · {daily.length} วัน
@@ -112,11 +116,13 @@ export default function BarChartCard({
             ไม่มีข้อมูลในช่วงเวลาที่เลือก
           </Typography>
         ) : (
-          // [แก้บัค] เดียวกับ WindRoseChart.jsx — บังคับสร้างกราฟใหม่ทุกครั้งที่
-          // ตัวแปร/ช่วงเวลาเปลี่ยน แทนที่จะพึ่ง chart.update() ของ
-          // highcharts-react-official (ดูคอมเมนต์เต็มใน WindRoseChart.jsx)
+          // key บังคับสร้างกราฟใหม่เมื่อตัวแปร/ช่วงเวลาเปลี่ยน (ดู WindRoseChart)
           <Box key={`${datastreamId}-${from}-${to}`} sx={{ width: "100%" }}>
-            <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+            <HighchartsReact
+              ref={chartRef}
+              highcharts={Highcharts}
+              options={chartOptions}
+            />
           </Box>
         )}
       </Box>

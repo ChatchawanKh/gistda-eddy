@@ -1,9 +1,5 @@
-// src/pages/Dashboard/components/HeatmapChartCard.jsx
-// Heatmap: ค่าเฉลี่ยของ "ตัวแปรหลัก" แยกตาม "วันในสัปดาห์ x ชั่วโมง" ภายในช่วง
-// เวลาที่เลือก ช่วยเห็น pattern ที่ผูกกับเวลาของวัน/วันในสัปดาห์ (เช่น ลมแรงช่วง
-// บ่าย ฝุ่นสูงช่วงเช้า) ที่กราฟเส้น/แท่งทั่วไปมองเห็นได้ยาก
-// ใช้ highcharts/modules/heatmap ที่เปิดใช้งานไว้กลางใน utils/highchartsSetup.js
-import * as React from "react";
+// Heatmap: ค่าเฉลี่ยของตัวแปรหลักแยกตามวันในสัปดาห์ x ชั่วโมง
+import { useMemo, useRef } from "react";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -11,6 +7,7 @@ import * as HighchartsReactModule from "highcharts-react-official";
 
 import Highcharts, { EXPORTING_DEFAULTS } from "../utils/highchartsSetup";
 import { groupHourlyHeatmap } from "../utils/insightSummary";
+import ChartCardMenu from "./ChartCardMenu";
 
 const HighchartsReact =
   HighchartsReactModule.default?.default ||
@@ -32,8 +29,9 @@ export default function HeatmapChartCard({
   const theme = useTheme();
   const { text, background, divider, primary } = theme.palette;
   const seriesColor = color || primary.main;
+  const chartRef = useRef(null);
 
-  const heatmap = React.useMemo(() => groupHourlyHeatmap(rows), [rows]);
+  const heatmap = useMemo(() => groupHourlyHeatmap(rows), [rows]);
 
   const cardSx = {
     border: `1px solid ${divider}`,
@@ -104,6 +102,11 @@ export default function HeatmapChartCard({
         <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
           Heatmap รายชั่วโมง — {variableName || "ตัวแปรหลัก"}
         </Typography>
+        <ChartCardMenu
+          chartRef={chartRef}
+          disabled={loading || !heatmap.hasAny}
+          sx={{ ml: "auto" }}
+        />
       </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         ค่าเฉลี่ยแยกตามวันในสัปดาห์และชั่วโมง{unit ? ` (${unit})` : ""}
@@ -116,11 +119,13 @@ export default function HeatmapChartCard({
             ข้อมูลยังไม่พอสำหรับสร้าง Heatmap (ต้องมีข้อมูลกระจายหลายช่วงเวลา)
           </Typography>
         ) : (
-          // [แก้บัค] เดียวกับ WindRoseChart.jsx — บังคับสร้างกราฟใหม่ทุกครั้งที่
-          // ตัวแปร/ช่วงเวลาเปลี่ยน แทนที่จะพึ่ง chart.update() ของ
-          // highcharts-react-official (ดูคอมเมนต์เต็มใน WindRoseChart.jsx)
+          // key บังคับสร้างกราฟใหม่เมื่อตัวแปร/ช่วงเวลาเปลี่ยน (ดู WindRoseChart)
           <Box key={`${datastreamId}-${from}-${to}`} sx={{ width: "100%" }}>
-            <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+            <HighchartsReact
+              ref={chartRef}
+              highcharts={Highcharts}
+              options={chartOptions}
+            />
           </Box>
         )}
       </Box>

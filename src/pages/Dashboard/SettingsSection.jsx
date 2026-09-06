@@ -1,6 +1,4 @@
-import * as React from "react";
-import { useMemo, useState } from "react";
-
+import { memo, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme, alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -25,19 +23,16 @@ import IconButton from "@mui/material/IconButton";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth-context";
 import axiosClient from "../../api/axiosClient";
-// หมายเหตุ: ใช้ util ฝั่ง client (src/utils/validatePassword.js) ไม่ใช่ import จาก server —
-// โค้ด server ไม่ควรถูกดึงเข้ามาอยู่ใน frontend bundle
 import { validatePassword } from "../../../server/auth/utils/validatePassword";
 
-// เงื่อนไขรหัสผ่านที่โชว์เป็น checklist สด ๆ ระหว่างพิมพ์ (ไม่รวมกฎ blacklist/ผูกกับอีเมล
-// เพราะเป็น edge case ที่ค่อยแจ้งผ่าน error message ตอน submit แทน จะได้ไม่ดู noisy เกินไป)
+// checklist ระหว่างพิมพ์ — ไม่รวมกฎ blacklist/ผูกกับอีเมล (แจ้งผ่าน error ตอน submit)
 const PASSWORD_RULES = [
   {
     key: "length",
     label: "มากกว่า 10 ตัวอักษร",
-    test: (v) => v.length >= 10 ,
+    test: (v) => v.length >= 10,
   },
   { key: "upper", label: "มีตัวพิมพ์ใหญ่ (A-Z)", test: (v) => /[A-Z]/.test(v) },
   { key: "lower", label: "มีตัวพิมพ์เล็ก (a-z)", test: (v) => /[a-z]/.test(v) },
@@ -49,7 +44,7 @@ const PASSWORD_RULES = [
   },
 ];
 
-const PasswordChecklist = React.memo(function PasswordChecklist({ password }) {
+const PasswordChecklist = memo(function PasswordChecklist({ password }) {
   const theme = useTheme();
   const isVisible = password.length > 0;
 
@@ -183,22 +178,18 @@ export default function SettingsSection() {
   const { user, isAdmin, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
 
-  // ---- toggle แสดง/ซ่อนรหัสผ่าน ----
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ---- ข้อมูลส่วนตัว ----
   const [fullName, setFullName] = useState(user?.full_name || "");
   const originalFullName = user?.full_name || "";
-
   const isProfileUnchanged = fullName.trim() === originalFullName.trim();
 
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // ---- เปลี่ยนรหัสผ่าน ----
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -369,7 +360,6 @@ export default function SettingsSection() {
                 value={user?.email || ""}
                 fullWidth
                 disabled
-                // helperText="ไม่สามารถเปลี่ยนอีเมลได้ด้วยตัวเอง ติดต่อผู้ดูแลระบบหากต้องการเปลี่ยน"
               />
 
               <TextField
@@ -513,7 +503,6 @@ export default function SettingsSection() {
                 <Button
                   type="submit"
                   variant="contained"
-                  // color="error"
                   disabled={savingPassword || isPasswordInvalid}
                 >
                   {savingPassword ? "กำลังบันทึก..." : "เปลี่ยนรหัสผ่าน"}

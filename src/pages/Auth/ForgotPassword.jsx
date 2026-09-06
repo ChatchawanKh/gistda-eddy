@@ -1,4 +1,3 @@
-// src/pages/Auth/ForgotPassword.jsx
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import Box from '@mui/material/Box';

@@ -1,13 +1,12 @@
-// src/pages/Dashboard/hooks/useThings.js
-import * as React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { frostFetch } from "../api/frostClient";
 
 export function useThings() {
-  const [things, setThings] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
+  const [things, setThings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const reload = React.useCallback(() => {
+  const reload = useCallback(() => {
     let active = true;
     setLoading(true);
     setError(null);
@@ -29,7 +28,8 @@ export function useThings() {
     };
   }, []);
 
-  React.useEffect(() => reload(), [reload]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount: loading/error เริ่มต้นเป็นค่าเดิมอยู่แล้ว, ผลลัพธ์ตั้ง state หลัง await
+  useEffect(() => reload(), [reload]);
 
   return { things, loading, error, reload };
 }

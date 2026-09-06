@@ -1,4 +1,4 @@
-import * as React from "react";
+import { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { useTheme, alpha } from "@mui/material/styles";
 
 import {
@@ -54,7 +54,7 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 
 import axiosClient from "../../api/axiosClient";
 import ConfirmDialog from "../../components/ConfirmDialog";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth-context";
 // util ฝั่ง client เดียวกับที่ใช้ในหน้า Register / ResetPassword / SettingsSection
 import { validatePassword } from "../../../server/auth/utils/validatePassword";
 
@@ -157,7 +157,7 @@ function mixOpaqueColor(tintColor, baseColor, ratio) {
 /* ============================================================================
  * PasswordChecklist — โชว์เมื่อเริ่มพิมพ์ (Collapse) + scale bar ความแข็งแรง
  * ==========================================================================*/
-const PasswordChecklist = React.memo(function PasswordChecklist({ password }) {
+const PasswordChecklist = memo(function PasswordChecklist({ password }) {
   const theme = useTheme();
   const isVisible = password.length > 0;
 
@@ -309,7 +309,7 @@ const PasswordChecklist = React.memo(function PasswordChecklist({ password }) {
 /* ============================================================================
  * AddUserDialog — state ของฟอร์มอยู่ภายในตัวมันเอง ไม่ผูกกับ component แม่
  * ==========================================================================*/
-const AddUserDialog = React.memo(function AddUserDialog({
+const AddUserDialog = memo(function AddUserDialog({
   open,
   onClose,
   onSubmit,
@@ -317,13 +317,13 @@ const AddUserDialog = React.memo(function AddUserDialog({
   const theme = useTheme();
   const radius = theme.shape.borderRadius;
 
-  const [form, setForm] = React.useState(emptyForm);
-  const [showCreatePassword, setShowCreatePassword] = React.useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
-  const [localError, setLocalError] = React.useState("");
-  const [submitting, setSubmitting] = React.useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const createPasswordErrors = React.useMemo(
+  const createPasswordErrors = useMemo(
     () => validatePassword(form.password, form.email),
     [form.password, form.email],
   );
@@ -561,7 +561,7 @@ const AddUserDialog = React.memo(function AddUserDialog({
 /* ============================================================================
  * ResetPasswordDialog
  * ==========================================================================*/
-const ResetPasswordDialog = React.memo(function ResetPasswordDialog({
+const ResetPasswordDialog = memo(function ResetPasswordDialog({
   target,
   onClose,
   onSubmit,
@@ -572,20 +572,21 @@ const ResetPasswordDialog = React.memo(function ResetPasswordDialog({
   // เหมือน delete หรือ deactivate — ไม่จำเป็นต้องใช้โทน warning/error
   const color = theme.palette.primary.main;
 
-  const [value, setValue] = React.useState("");
-  const [show, setShow] = React.useState(false);
-  const [localError, setLocalError] = React.useState("");
-  const [submitting, setSubmitting] = React.useState(false);
+  const [value, setValue] = useState("");
+  const [show, setShow] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const targetId = target?.user_id;
-  React.useEffect(() => {
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset ฟอร์มเมื่อสลับผู้ใช้เป้าหมาย (ตั้งใจ)
     setValue("");
     setShow(false);
     setLocalError("");
     setSubmitting(false);
   }, [targetId]);
 
-  const errors = React.useMemo(
+  const errors = useMemo(
     () => validatePassword(value, target?.email),
     [value, target?.email],
   );
@@ -771,7 +772,7 @@ const ResetPasswordDialog = React.memo(function ResetPasswordDialog({
 /* ============================================================================
  * BulkActionDialog — state รหัสผ่านยืนยันตัวตนของ admin อยู่ภายในตัวมันเอง
  * ==========================================================================*/
-const BulkActionDialog = React.memo(function BulkActionDialog({
+const BulkActionDialog = memo(function BulkActionDialog({
   bulkAction,
   onClose,
   onConfirm,
@@ -780,12 +781,13 @@ const BulkActionDialog = React.memo(function BulkActionDialog({
   const radius = theme.shape.borderRadius;
   const { text, divider, background } = theme.palette;
 
-  const [password, setPassword] = React.useState("");
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [error, setError] = React.useState("");
-  const [processing, setProcessing] = React.useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [processing, setProcessing] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset ฟอร์มเมื่อเปลี่ยน bulk action (ตั้งใจ)
     setPassword("");
     setShowPassword(false);
     setError("");
@@ -948,7 +950,7 @@ const BulkActionDialog = React.memo(function BulkActionDialog({
 /* ============================================================================
  * SummaryCards
  * ==========================================================================*/
-const SummaryCards = React.memo(function SummaryCards({ summary }) {
+const SummaryCards = memo(function SummaryCards({ summary }) {
   const theme = useTheme();
   const radius = theme.shape.borderRadius + 4;
   const { primary, text } = theme.palette;
@@ -1101,7 +1103,7 @@ const SummaryCards = React.memo(function SummaryCards({ summary }) {
 /* ============================================================================
  * BulkActionBar — bulkRoleValue เก็บ local ในตัวเอง
  * ==========================================================================*/
-const BulkActionBar = React.memo(function BulkActionBar({
+const BulkActionBar = memo(function BulkActionBar({
   selectedCount,
   selectedUsers,
   onRequestBulkAction,
@@ -1113,9 +1115,9 @@ const BulkActionBar = React.memo(function BulkActionBar({
   const secondaryColor = theme.palette.secondary?.main || "#7c3aed";
   const secondaryDark = theme.palette.secondary?.dark || "#6d28d9";
 
-  const [bulkRoleValue, setBulkRoleValue] = React.useState("user");
+  const [bulkRoleValue, setBulkRoleValue] = useState("user");
 
-  const bulkRoleAllSame = React.useMemo(() => {
+  const bulkRoleAllSame = useMemo(() => {
     if (selectedUsers.length === 0) return true;
     return selectedUsers.every((u) => u.role_name === bulkRoleValue);
   }, [selectedUsers, bulkRoleValue]);
@@ -1345,7 +1347,7 @@ function SortableHeaderCell({ field, label, orderBy, order, onSort }) {
 /* ============================================================================
  * UserRow — memoized ต่อแถว: toggle checkbox 1 แถว จะไม่ทำให้แถวอื่น re-render
  * ==========================================================================*/
-const UserRow = React.memo(function UserRow({
+const UserRow = memo(function UserRow({
   user,
   isSelf,
   isSelected,
@@ -1670,9 +1672,9 @@ const UserRow = React.memo(function UserRow({
 });
 
 /* ============================================================================
- * UsersTable — ห่อด้วย React.memo ทั้งก้อน + คำนวณ stickyColors ในตัวเอง
+ * UsersTable — ห่อด้วย memo ทั้งก้อน + คำนวณ stickyColors ในตัวเอง
  * ==========================================================================*/
-const UsersTable = React.memo(function UsersTable({
+const UsersTable = memo(function UsersTable({
   users,
   loading,
   hasAnyUsers,
@@ -1697,7 +1699,7 @@ const UsersTable = React.memo(function UsersTable({
   const { primary, divider, text, background } = theme.palette;
   const radius = theme.shape.borderRadius;
 
-  const stickyColors = React.useMemo(() => {
+  const stickyColors = useMemo(() => {
     const base = background.paper;
     return {
       normal: base,
@@ -1894,29 +1896,29 @@ export default function UserManagementSection() {
   const radius = theme.shape.borderRadius;
   const { user: currentUser } = useAuth();
 
-  const [users, setUsers] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState("");
-  const [info, setInfo] = React.useState("");
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
-  const [searchText, setSearchText] = React.useState("");
-  const [roleFilter, setRoleFilter] = React.useState("all");
-  const [orderBy, setOrderBy] = React.useState("email");
-  const [order, setOrder] = React.useState("asc");
+  const [searchText, setSearchText] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [orderBy, setOrderBy] = useState("email");
+  const [order, setOrder] = useState("asc");
 
-  const [addOpen, setAddOpen] = React.useState(false);
-  const [resetTarget, setResetTarget] = React.useState(null);
-  const [deleteTarget, setDeleteTarget] = React.useState(null);
-  const [deleting, setDeleting] = React.useState(false);
-  const [statusTarget, setStatusTarget] = React.useState(null);
-  const [togglingStatus, setTogglingStatus] = React.useState(false);
-  const [approveTarget, setApproveTarget] = React.useState(null);
-  const [approving, setApproving] = React.useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [statusTarget, setStatusTarget] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [approving, setApproving] = useState(false);
 
-  const [selectedIds, setSelectedIds] = React.useState(() => new Set());
-  const [bulkAction, setBulkAction] = React.useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkAction, setBulkAction] = useState(null);
 
-  const fetchUsers = React.useCallback(async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await axiosClient.get("/users");
@@ -1928,11 +1930,12 @@ export default function UserManagementSection() {
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount: setState หลัง await (async lifecycle ปกติ)
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleSort = React.useCallback(
+  const handleSort = useCallback(
     (field) => {
       if (orderBy === field) {
         setOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -1945,7 +1948,7 @@ export default function UserManagementSection() {
   );
 
   // กรองตามคำค้นหา (อีเมล/ชื่อ-นามสกุล) + สิทธิ์ แล้วจึงเรียงลำดับตามคอลัมน์ที่เลือก
-  const displayedUsers = React.useMemo(() => {
+  const displayedUsers = useMemo(() => {
     const q = searchText.trim().toLowerCase();
 
     let result = users.filter((u) => {
@@ -1976,7 +1979,7 @@ export default function UserManagementSection() {
   }, [users, searchText, roleFilter, orderBy, order, currentUser?.user_id]);
 
   // แถวที่สามารถเลือกได้ (ตัดตัวเองออกเสมอ กันดำเนินการ bulk กับบัญชีตัวเอง)
-  const selectableIds = React.useMemo(
+  const selectableIds = useMemo(
     () =>
       displayedUsers
         .filter((u) => u.user_id !== currentUser?.user_id)
@@ -1991,13 +1994,13 @@ export default function UserManagementSection() {
   const someSelected =
     !allSelected && selectableIds.some((id) => selectedIds.has(id));
 
-  const selectedUsers = React.useMemo(
+  const selectedUsers = useMemo(
     () => users.filter((u) => selectedIds.has(u.user_id)),
     [users, selectedIds],
   );
 
   // สรุปจำนวนตามสิทธิ์
-  const summary = React.useMemo(() => {
+  const summary = useMemo(() => {
     const total = users.length;
     const admins = users.filter((u) => u.role_name === "admin").length;
     const pending = users.filter((u) => !u.is_approved).length;
@@ -2005,15 +2008,16 @@ export default function UserManagementSection() {
   }, [users]);
 
   // ล้างการเลือกเมื่อเปลี่ยนคำค้นหา/ตัวกรอง เพื่อไม่ให้ดำเนินการกับแถวที่ถูกซ่อนอยู่โดยไม่ตั้งใจ
-  React.useEffect(() => {
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- ปรับ state ตามการเปลี่ยนตัวกรอง (ตั้งใจ)
     setSelectedIds(new Set());
   }, [searchText, roleFilter]);
 
-  const toggleSelectAll = React.useCallback(() => {
+  const toggleSelectAll = useCallback(() => {
     setSelectedIds(() => (allSelected ? new Set() : new Set(selectableIds)));
   }, [allSelected, selectableIds]);
 
-  const toggleSelectRow = React.useCallback((userId) => {
+  const toggleSelectRow = useCallback((userId) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) next.delete(userId);
@@ -2022,10 +2026,10 @@ export default function UserManagementSection() {
     });
   }, []);
 
-  const clearSelection = React.useCallback(() => setSelectedIds(new Set()), []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   // เปิด popup ยืนยันก่อนดำเนินการพร้อมกันหลายราย
-  const requestBulkAction = React.useCallback(
+  const requestBulkAction = useCallback(
     (type, roleName) => {
       const targets = users.filter((u) => selectedIds.has(u.user_id));
       if (targets.length === 0) return;
@@ -2038,9 +2042,9 @@ export default function UserManagementSection() {
     [users, selectedIds],
   );
 
-  const closeBulkDialog = React.useCallback(() => setBulkAction(null), []);
+  const closeBulkDialog = useCallback(() => setBulkAction(null), []);
 
-  const handleConfirmBulkAction = React.useCallback(
+  const handleConfirmBulkAction = useCallback(
     async (password) => {
       const userIds = bulkAction.targets.map((u) => u.user_id);
 
@@ -2081,7 +2085,7 @@ export default function UserManagementSection() {
     [bulkAction, fetchUsers],
   );
 
-  const handleCreateUser = React.useCallback(
+  const handleCreateUser = useCallback(
     async (payload) => {
       const { email, password, full_name, role_name } = payload;
       await axiosClient.post("/users", {
@@ -2096,7 +2100,7 @@ export default function UserManagementSection() {
     [fetchUsers],
   );
 
-  const handleChangeRole = React.useCallback(
+  const handleChangeRole = useCallback(
     async (userId, newRole) => {
       if (userId === currentUser?.user_id) {
         setError(
@@ -2117,7 +2121,7 @@ export default function UserManagementSection() {
     [currentUser?.user_id, fetchUsers],
   );
 
-  const requestApprove = React.useCallback((user) => {
+  const requestApprove = useCallback((user) => {
     setApproveTarget(user);
   }, []);
 
@@ -2139,7 +2143,7 @@ export default function UserManagementSection() {
   }
 
   // กันดำเนินการกับบัญชีของตัวเองเสมอ
-  const requestToggleStatus = React.useCallback(
+  const requestToggleStatus = useCallback(
     (user) => {
       if (user.user_id === currentUser?.user_id) {
         setError(
@@ -2175,7 +2179,7 @@ export default function UserManagementSection() {
   }
 
   // กันลบบัญชีของตัวเองเสมอ
-  const requestDelete = React.useCallback(
+  const requestDelete = useCallback(
     (user) => {
       if (user.user_id === currentUser?.user_id) {
         setError(
@@ -2203,11 +2207,11 @@ export default function UserManagementSection() {
     }
   }
 
-  const requestResetPassword = React.useCallback((user) => {
+  const requestResetPassword = useCallback((user) => {
     setResetTarget(user);
   }, []);
 
-  const handleResetPassword = React.useCallback(
+  const handleResetPassword = useCallback(
     async (newPassword) => {
       await axiosClient.patch(`/users/${resetTarget.user_id}/reset-password`, {
         newPassword,

@@ -195,7 +195,7 @@ export async function refresh(req, res) {
 
     const newAccessToken = generateAccessToken(user);
     return res.json({ accessToken: newAccessToken });
-  } catch (err) {
+  } catch {
     return res.status(403).json({ message: 'Refresh token ไม่ถูกต้องหรือหมดอายุ' });
   }
 }

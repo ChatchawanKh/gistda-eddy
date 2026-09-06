@@ -1,15 +1,13 @@
-// src/api/axiosClient.js
-// ต้องติดตั้งก่อน: npm install axios
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true, // จำเป็นเพื่อให้ refreshToken cookie ถูกส่งไปด้วย
+  withCredentials: true, // ส่ง refreshToken cookie ไปกับทุก request
 });
 
-// แนบ access token ทุก request (อ่านจาก localStorage ที่ AuthContext เป็นคนตั้งค่า)
+// อ่าน access token จาก localStorage ที่ AuthContext ตั้งค่าไว้
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
@@ -18,7 +16,7 @@ axiosClient.interceptors.request.use((config) => {
   return config;
 });
 
-// เมื่อ access token หมดอายุ (401 + code TOKEN_EXPIRED) ให้ลอง refresh อัตโนมัติ 1 ครั้ง
+// เมื่อ access token หมดอายุ (401 + code TOKEN_EXPIRED) ลอง refresh อัตโนมัติ 1 ครั้ง
 let isRefreshing = false;
 let refreshSubscribers = [];
 

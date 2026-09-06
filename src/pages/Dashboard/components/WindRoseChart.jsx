@@ -1,13 +1,6 @@
-// src/pages/Dashboard/components/WindRoseChart.jsx
-// Wind Rose Chart แบบมาตรฐาน — วงกลมเข็มทิศ 16 ทิศ แสดงทั้ง "ทิศทาง" (มุมรอบ
-// วง) และ "ความเร็ว" (สีที่ไล่ตามช่วงความเร็ว ซ้อนทับกันเป็นแท่งในแต่ละทิศ)
-// พร้อมกันในภาพเดียว ตามรูปแบบมาตรฐานของ Highcharts wind rose: polar stacked
-// column chart (chart.polar + type: "column" + plotOptions.column.stacking)
-//
-// ต้องการ Datastream สองตัว: ความเร็วลม + ทิศทางลม ของสถานีเดียวกัน โดยจับคู่
-// ข้อมูลด้วย phenomenonTime ที่ตรงกัน (ดู buildWindRoseMatrix ใน insightHelpers)
-// รับ from/to จากแถบช่วงเวลากลางเช่นเดียวกับกราฟอื่นในหน้า
-import * as React from "react";
+// Wind Rose Chart — polar stacked column (เข็มทิศ 16 ทิศ): ทิศทาง = มุม, ความเร็ว = สี
+// ต้องการ Datastream ความเร็วลม + ทิศทางลมของสถานีเดียวกัน (จับคู่ใน buildWindRoseMatrix)
+import { useRef, useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -17,6 +10,7 @@ import * as HighchartsReactModule from "highcharts-react-official";
 
 import Highcharts, { EXPORTING_DEFAULTS } from "../utils/highchartsSetup";
 import { useObservationsRange } from "../hooks/useObservationsRange";
+import ChartCardMenu from "./ChartCardMenu";
 import {
   COMPASS_SECTORS,
   buildWindRoseMatrix,
@@ -36,29 +30,16 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   const theme = useTheme();
   const { text, background, divider } = theme.palette;
 
-  // [แก้บัค] "เปลี่ยนช่วงเวลาแล้ว Wind Rose ไม่แสดงผล จนกว่าจะเปิด/ปิด Full
-  // Screen ก่อน" — ต้นเหตุจริงคือ: เวลา fetch ของความเร็ว+ทิศทางลมเสร็จเร็ว
-  // พอ (เช่นโหลดไว หรือมี cache) React จะ batch การเปลี่ยนสถานะ
-  // "กำลังโหลด -> โหลดเสร็จ" ให้เกิดใน commit เดียว ทำให้ Box ที่ห่อ
-  // <HighchartsReact> "ไม่เคย unmount" ระหว่างเปลี่ยนช่วงเวลาเลย (เพราะทั้งก่อน
-  // และหลังคือกราฟที่ mount ค้างอยู่ตำแหน่งเดิม) — highcharts-react-official
-  // จึงเลือกทาง "chart.update(options)" กับ instance เดิมแทนที่จะสร้างกราฟ
-  // ใหม่ ซึ่งกราฟ polar + stacked column แบบนี้ไม่ repaint ให้ถูกต้องจนกว่าจะมี
-  // event resize จากภายนอกมา force reflow (แบบที่ปุ่ม Full Screen บังเอิญทำให้)
-  //
-  // ทางแก้ที่ตรงจุดที่สุดคือบังคับให้ React "ทิ้งของเดิม สร้างกราฟใหม่เสมอ"
-  // ทุกครั้งที่ query เปลี่ยน แทนที่จะพึ่งพา update() ของ Highcharts — ทำโดยตั้ง
-  // key ของ Box ที่ห่อ HighchartsReact ให้ผูกกับ datastream + from/to (ดูตรง
-  // JSX ด้านล่าง) เมื่อ key เปลี่ยน React จะ unmount ของเก่า + mount กราฟใหม่
-  // เสมอ รับประกันว่ากราฟจะถูกวาดใหม่ทั้งหมดถูกต้องทุกครั้ง ไม่ว่า loading state
-  // จะถูก batch หายไปหรือไม่ก็ตาม
-  //
-  // ส่วน ResizeObserver ด้านล่างนี้เก็บไว้เป็นตาข่ายนิรภัยเสริม สำหรับกรณี
-  // container เปลี่ยนขนาดจากสาเหตุอื่น (เช่น sidebar ย่อ/ขยาย) หลังกราฟ mount
-  // ไปแล้ว ไม่ใช่ตัวแก้บัคหลักของเคสนี้
-  const chartRef = React.useRef(null);
-  const resizeObserverRef = React.useRef(null);
-  const chartContainerRef = React.useCallback((node) => {
+  // เปลี่ยนช่วงเวลาแล้วกราฟไม่ repaint จนกว่าจะ resize: เมื่อ fetch เสร็จเร็วพอ
+  // React batch loading->done เป็น commit เดียว กราฟไม่เคย unmount ทำให้
+  // highcharts-react-official ใช้ chart.update() ซึ่ง polar stacked column ไม่
+  // repaint ถูกต้อง — แก้ด้วย key ผูกกับ datastream + from/to บน Box ที่ห่อกราฟ
+  // (ดู JSX) ให้ React unmount/mount กราฟใหม่เสมอ
+  // ResizeObserver + reflow ด้านล่างเป็นตาข่ายนิรภัยกรณี container เปลี่ยนขนาด
+  // จากสาเหตุอื่น (เช่น sidebar ย่อ/ขยาย) หลังกราฟ mount แล้ว
+  const chartRef = useRef(null);
+  const resizeObserverRef = useRef(null);
+  const chartContainerRef = useCallback((node) => {
     if (resizeObserverRef.current) {
       resizeObserverRef.current.disconnect();
       resizeObserverRef.current = null;
@@ -87,11 +68,9 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   const error = errorSpeed || errorDir;
   const unit = speedDatastream?.unitOfMeasurement?.symbol || "";
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!chartRef.current?.chart) return undefined;
-    // reflow ทันที + อีกครั้งหลังจากนั้น เผื่อกรณี container กำลังอยู่ระหว่าง
-    // CSS transition (เช่น Popover ของ DateRangePickerModern กำลังปิดตัวลง)
-    // ตอนที่กราฟ mount พอดี ทำให้ reflow ครั้งแรก (rAF) วัดขนาดได้ไม่นิ่งจริง
+    // reflow หลายครั้ง เผื่อ container กำลังอยู่ระหว่าง CSS transition ตอนกราฟ mount
     const raf = requestAnimationFrame(() => chartRef.current?.chart?.reflow());
     const t1 = setTimeout(() => chartRef.current?.chart?.reflow(), 320);
     const t2 = setTimeout(() => chartRef.current?.chart?.reflow(), 700);
@@ -102,7 +81,7 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
     };
   });
 
-  const rose = React.useMemo(() => {
+  const rose = useMemo(() => {
     if (!speedRows.length || !dirRows.length) return null;
     const edges = computeSpeedBinEdges(speedRows);
     const result = buildWindRoseMatrix(speedRows, dirRows, edges);
@@ -145,12 +124,14 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
       backgroundColor: "transparent",
       height: 360,
       style: { fontFamily: theme.typography.fontFamily },
+      // กราฟ polar ลากเมาส์เพื่อซูมไม่ได้ตามธรรมชาติ — ปิด default zoom ทั่วแอป
+      // (highchartsSetup.js) ไว้เฉพาะกราฟนี้ ไม่ให้ค้างสถานะเลือกพื้นที่
+      zooming: { type: null },
     },
     title: { text: undefined },
     credits: { enabled: false },
     exporting: EXPORTING_DEFAULTS,
-    // startAngle/endAngle = 0/360 บังคับให้ pane เป็นวงกลมเต็มวงเสมอ (ไม่ใช่
-    // เสี้ยววง) ขนาด 88% ให้วงกลมเต็มการ์ดใกล้เคียงตัวอย่างมาตรฐานของ Highcharts
+    // 0/360 บังคับ pane เป็นวงกลมเต็มวงเสมอ
     pane: { size: "88%", startAngle: 0, endAngle: 360 },
     xAxis: {
       categories: COMPASS_SECTORS,
@@ -175,10 +156,7 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
       style: { color: text.primary, fontSize: "12px" },
       valueDecimals: 1,
     },
-    // legend วางแนวนอนใต้กราฟ (ไม่ใช่ชิดขวาแบบตัวอย่างทางการ) เพราะการ์ดของ
-    // เราแคบกว่าเดโมเต็มหน้าเดิมมาก — ถ้าวาง legend ชิดขวาจะแย่งพื้นที่แนวนอน
-    // ไปมาก ทำให้วงกลม wind rose บีบแคบ ไม่กลมเท่าที่ควร วางไว้ใต้กราฟแทนจะ
-    // เหลือพื้นที่แนวนอนเต็มที่ให้วงกลม ทำให้ได้วงกลมที่ใหญ่และกลมสวยกว่า
+    // legend แนวนอนใต้กราฟ เพื่อไม่แย่งพื้นที่แนวนอนของวงกลมในการ์ดแคบ
     legend: {
       align: "center",
       verticalAlign: "bottom",
@@ -212,9 +190,16 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
 
   return (
     <Box sx={cardSx}>
-      <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary, mb: 0.25 }}>
-        Wind Rose Chart (ทิศทาง+ความเร็วลม)
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 0.25 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
+          Wind Rose Chart (ทิศทาง+ความเร็วลม)
+        </Typography>
+        <ChartCardMenu
+          chartRef={chartRef}
+          disabled={fetching || !rose}
+          sx={{ ml: "auto" }}
+        />
+      </Box>
       <Typography sx={{ fontSize: 11.5, color: text.secondary, mb: 1 }}>
         {rose ? `จับคู่ข้อมูลได้ ${rose.matched} จุด` : "แนวโน้มทิศทางและความเร็วลม"}
       </Typography>

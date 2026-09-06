@@ -1,18 +1,19 @@
-// src/pages/Dashboard/hooks/useObservationsRange.js
-// ดึง Observations ของ Datastream หนึ่งตัว ภายในช่วงเวลาที่กำหนด (from/to เป็น
-// ISO string) ใช้ร่วมกันโดยทุกกราฟใน Insight Dashboard (DashboardInsight.jsx)
-// เพื่อให้ทุกกราฟ query ตาม date range เดียวกันได้
-import * as React from "react";
+// ดึง Observations ของ Datastream หนึ่งตัวภายในช่วงเวลา from/to (ISO string)
+// ใช้ร่วมกันโดยทุกกราฟใน Insight Dashboard เพื่อ query ตาม date range เดียวกัน
+import { useState, useEffect } from "react";
 import { frostFetch } from "../api/frostClient";
 
 const MAX_POINTS = 3000;
 
 export function useObservationsRange(datastreamId, from, to) {
-  const [rows, setRows] = React.useState([]);
-  const [fetching, setFetching] = React.useState(false);
-  const [error, setError] = React.useState(null);
+  const [rows, setRows] = useState([]);
+  const [fetching, setFetching] = useState(false);
+  const [error, setError] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect --
+       fetch lifecycle: เคลียร์ rows เมื่อ params ไม่ครบ และตั้ง fetching/error
+       ก่อนเริ่ม fetch เป็น pattern มาตรฐานของ data fetching (ผลลัพธ์ตั้ง state หลัง await) */
     if (!datastreamId || !from || !to) {
       setRows([]);
       return;
@@ -20,6 +21,7 @@ export function useObservationsRange(datastreamId, from, to) {
     let active = true;
     setFetching(true);
     setError(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     frostFetch(
       `/Datastreams(${datastreamId})/Observations?$filter=phenomenonTime ge ${from} and phenomenonTime le ${to}&$orderby=phenomenonTime asc&$top=${MAX_POINTS}`

@@ -6,14 +6,19 @@
 //     ถ้าไม่โหลด module นี้ Highcharts จะ "เพิกเฉย" ต่อ chart.polar เงียบ ๆ
 //     แล้ว fallback ไปวาดเป็นกราฟแท่งธรรมดา (ไม่ใช่วงกลม) โดยไม่ error ให้เห็น
 //     — WindRoseChart.jsx ต้องพึ่ง module นี้โดยตรง
-//   - exporting        -> ปุ่มเมนู (มุมขวาบนของกราฟ)
-//   - export-data      -> เพิ่มตัวเลือก "Download CSV" ในเมนู exporting
-//   - full-screen      -> เพิ่มตัวเลือก "View in full screen" ในเมนู exporting
+//   - exporting        -> เปิดใช้ export engine (เมนู default ของ Highcharts ถูก
+//     ปิดไว้ — เราวาดปุ่ม MoreVert เอง ดู ChartCardMenu.jsx — แต่ยังต้องโหลด
+//     module นี้เพื่อให้ chart.downloadCSV()/exportChartLocal() ทำงานได้)
+//   - export-data      -> chart.downloadCSV() (ดาวน์โหลดข้อมูลเป็น CSV)
+//   - offline-exporting -> chart.exportChartLocal() (สร้าง PNG ฝั่ง client ไม่พึ่ง
+//     export server ภายนอกของ Highcharts)
+//   - full-screen      -> chart.fullscreen.toggle() (ดูกราฟแบบเต็มจอ)
 //   - heatmap          -> ใช้กับ HeatmapChartCard.jsx
 import Highcharts from "highcharts";
 import HighchartsMore from "highcharts/highcharts-more";
 import HighchartsExporting from "highcharts/modules/exporting";
 import HighchartsExportData from "highcharts/modules/export-data";
+import HighchartsOfflineExporting from "highcharts/modules/offline-exporting";
 import HighchartsFullScreen from "highcharts/modules/full-screen";
 import HighchartsHeatmap from "highcharts/modules/heatmap";
 
@@ -29,6 +34,7 @@ function initModule(mod) {
 initModule(HighchartsMore);
 initModule(HighchartsExporting);
 initModule(HighchartsExportData);
+initModule(HighchartsOfflineExporting);
 initModule(HighchartsFullScreen);
 initModule(HighchartsHeatmap);
 
@@ -55,6 +61,57 @@ Highcharts.setOptions({
     downloadCSV: "ดาวน์โหลดข้อมูล (CSV)",
     viewFullscreen: "ดูแบบเต็มจอ",
     exitFullscreen: "ออกจากโหมดเต็มจอ",
+    resetZoom: "รีเซ็ตการซูม",
+    resetZoomTitle: "ยกเลิกการซูม กลับไปมุมมองเต็ม",
+  },
+  chart: {
+    // ซูมดูรายละเอียดด้วยการ "ลากเมาส์" คลุมพื้นที่กราฟ (แกน X) — ปิด mouse-wheel
+    // ไว้ไม่ให้แย่งการ scroll หน้าเว็บ เมื่อซูมแล้ว Highcharts วาดปุ่ม "รีเซ็ตการ
+    // ซูม" ให้เองมุมขวาบนของพื้นที่กราฟ จัดธีมปุ่มให้เข้าชุดกับเมนู export ของแอป
+    zooming: {
+      type: "x",
+      mouseWheel: { enabled: false },
+      resetButton: {
+        relativeTo: "plot",
+        position: { align: "right", x: -6, y: 4 },
+        theme: {
+          fill: "#FFFFFF",
+          stroke: MENU_COLORS.grayBorder,
+          "stroke-width": 1,
+          r: 8,
+          padding: 7,
+          style: {
+            color: MENU_COLORS.grayText,
+            fontSize: "11.5px",
+            fontWeight: "500",
+            fontFamily: '"Kanit", "Noto Sans Thai", sans-serif',
+          },
+          states: {
+            hover: {
+              fill: MENU_COLORS.blueHoverBg,
+              stroke: MENU_COLORS.blueHoverText,
+              style: { color: MENU_COLORS.blueHoverText },
+            },
+          },
+        },
+      },
+    },
+    events: {
+      // ดูกราฟแบบเต็มจอให้พื้นหลังเป็นสีขาว (ปกติ backgroundColor: "transparent"
+      // เพื่อกลืนกับการ์ด แต่พอเต็มจอ browser จะเทพื้นหลังดำ) — คืนค่าโปร่งใส
+      // เมื่อออกจากเต็มจอ ใช้ร่วมกับกฎ CSS :fullscreen ใน Theme.jsx
+      fullscreenOpen() {
+        this.update({ chart: { backgroundColor: "#FFFFFF" } }, true, false, false);
+      },
+      fullscreenClose() {
+        this.update(
+          { chart: { backgroundColor: "transparent" } },
+          true,
+          false,
+          false,
+        );
+      },
+    },
   },
   navigation: {
     buttonOptions: {
@@ -95,15 +152,13 @@ Highcharts.setOptions({
   },
 });
 
-// ค่าเริ่มต้นของเมนู export ให้ทุกกราฟใช้ร่วมกัน — ตัดปุ่ม print/PDF/SVG ที่ไม่
-// ค่อยเกี่ยวข้องออก เหลือแค่ Fullscreen + Download PNG + Download CSV ตามที่
-// requirement ต้องการ (Export PNG / CSV, Fullscreen)
+// เปิด export engine ไว้ (จำเป็นต่อ downloadCSV/exportChartLocal) แต่ปิดปุ่มเมนู
+// hamburger ที่ Highcharts วาดทับมุมขวาบนของกราฟ — เราย้ายไปใช้ปุ่ม MoreVert
+// ของ MUI บนแถวเดียวกับ Title แทน (ดู ChartCardMenu.jsx)
 export const EXPORTING_DEFAULTS = {
   enabled: true,
   buttons: {
-    contextButton: {
-      menuItems: ["viewFullscreen", "separator", "downloadPNG", "downloadCSV"],
-    },
+    contextButton: { enabled: false },
   },
 };
 

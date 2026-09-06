@@ -1,4 +1,3 @@
-import * as React from "react";
 import { alpha, useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -14,10 +13,7 @@ import KeyboardDoubleArrowDownRoundedIcon from "@mui/icons-material/KeyboardDoub
 
 import { formatUtcLabel } from "../utils/insightSummary";
 
-/* ------------------------------------------------------------------ */
-/* KPI Card — 3 บรรทัด: (icon + Title) / value / unit-or-caption         */
-/* ------------------------------------------------------------------ */
-
+// KPI Card — 3 บรรทัด: (icon + title) / value / unit-or-caption
 function KpiCard({ icon: Icon, label, value, sub, accentColor }) {
   const theme = useTheme();
   const { text } = theme.palette;
@@ -37,9 +33,7 @@ function KpiCard({ icon: Icon, label, value, sub, accentColor }) {
         minWidth: 0,
       }}
     >
-      {/* ลายพื้นหลัง — dot grid บาง ๆ สีเดียวกับ accentColor ของการ์ด ทำ
-          ด้วย CSS gradient ล้วน (ไม่ต้องพึ่งไฟล์ภาพ) วางเป็นเลเยอร์ล่างสุด
-          และจางลงเป็น fade ทางขวา-ล่าง ไม่ให้แย่งความสนใจจากตัวเลขหลัก */}
+      {/* ลายพื้นหลัง dot grid (CSS gradient) จางลงทางขวา-ล่าง */}
       <Box
         sx={{
           position: "absolute",
@@ -145,10 +139,6 @@ function KpiCard({ icon: Icon, label, value, sub, accentColor }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Insight Summary Bar                                                 */
-/* ------------------------------------------------------------------ */
-
 export default function InsightSummaryBar({
   latestAvailableDate,
   summary,
@@ -168,9 +158,7 @@ export default function InsightSummaryBar({
   } = theme.palette;
   const radius = theme.shape.borderRadius + 4;
 
-  // สีตามความหมายเชิงสถิติ — ไล่เฉด "น้ำเงิน" ล้วนตาม theme.jsx จริง
-  // (secondary = อ่อนสุด, primary = กลาง, primary.dark = เข้มสุด) แทนการ
-  // สลับหลายโทน/สีส้ม เพื่อความ cohesive และดู modern มากขึ้น
+  // สีตามความหมายเชิงสถิติ — ไล่เฉดน้ำเงินตาม theme (secondary อ่อนสุด → primary.dark เข้มสุด)
   const countColor = grey?.[600] || text.secondary;
   const avgColor = primary.main; // BLUE[500] — แกนกลาง
   const maxColor = primary.dark; // BLUE[700] — เข้มสุด = ปลายบน
@@ -195,7 +183,7 @@ export default function InsightSummaryBar({
       : Number(v).toLocaleString("th-TH", { maximumFractionDigits: 2 });
 
   return (
-    <Box sx={{}}>
+    <Box>
       {/* KPI cards */}
       <Box
         sx={{

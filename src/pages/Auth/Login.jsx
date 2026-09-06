@@ -1,4 +1,3 @@
-// src/pages/Auth/Login.jsx
 import { useState } from "react";
 import { useNavigate, useLocation, Link as RouterLink } from "react-router-dom";
 import Box from "@mui/material/Box";
@@ -17,7 +16,7 @@ import IconButton from "@mui/material/IconButton";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth-context";
 import AuthLayout from "./AuthLayout";
 
 export default function Login() {
@@ -41,11 +40,6 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      // const fullEmail = `${email}@gistda.or.th`;
-
-      // await login(fullEmail, password, rememberMe);
-
-      // ไปใช้อันนี้ถ้าจะไม่สน @gistda.or.th
       await login(email, password, rememberMe);
       navigate(redirectTo, { replace: true });
     } catch (err) {
@@ -71,12 +65,7 @@ export default function Login() {
             label="อีเมล"
             type="email"
             value={email}
-            //เปลี่ยนมาใช้อันนี้ถ้าไม่สน @gistda.or.th
             onChange={(e) => setEmail(e.target.value)}
-
-            // onChange={(e) => setEmail(e.target.value.replace(/@.*$/, ""))}
-            // placeholder="name@gistda.or.th"
-            // required
             fullWidth
             slotProps={{
               input: {
@@ -92,7 +81,6 @@ export default function Login() {
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            // required
             fullWidth
             slotProps={{
               input: {
