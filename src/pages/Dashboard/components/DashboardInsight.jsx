@@ -515,7 +515,7 @@ export default function DashboardInsight({ things, loading, error }) {
         {/* 2) รายละเอียด + Multi-chart Dashboard ของสถานีที่เลือก */}
         {selectedThing ? (
           <Fade in key={selectedThing["@iot.id"]} timeout={280}>
-            <Box sx={{ py: 2 }}>
+            <Box sx={{ py: 10 }}>
               {primaryError && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {primaryError}
