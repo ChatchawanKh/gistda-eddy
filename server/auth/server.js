@@ -8,10 +8,20 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
+import validateEnv from './config/validateEnv.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 
+validateEnv();
+
 const app = express();
+
+// รันหลัง reverse proxy -> ต้องตั้ง TRUST_PROXY ไม่งั้น req.ip จะเป็น IP ของ proxy
+// และ rate limit จะนับผู้ใช้ทุกคนรวมเป็นคนเดียว
+if (process.env.TRUST_PROXY) {
+  const hops = Number(process.env.TRUST_PROXY);
+  app.set('trust proxy', Number.isNaN(hops) ? process.env.TRUST_PROXY : hops);
+}
 
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',

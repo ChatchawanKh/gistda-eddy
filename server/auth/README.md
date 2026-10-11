@@ -57,6 +57,16 @@ npm run dev
 
 Server จะรันที่ `http://localhost:5000` และมี endpoint ทดสอบสถานะที่ `GET /api/health`
 
+> 🔐 **JWT secret:** ต้องตั้ง `JWT_ACCESS_SECRET` และ `JWT_REFRESH_SECRET` เป็นค่าสุ่มยาว ≥ 32 ตัวอักษร และห้ามซ้ำกัน
+> ไม่งั้น server จะไม่ยอม start (ดู `config/validateEnv.js`) — สร้างค่าได้ด้วย:
+> ```bash
+> node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+> ```
+> ไฟล์ `.env` ถูก ignore ใน Git แล้ว — ห้าม commit ค่าจริง ให้แก้ที่ `.env.example` เมื่อเพิ่มตัวแปรใหม่
+
+> 🚦 **Rate limit:** endpoint สาธารณะ (`login`, `register`, `forgot-password`, `reset-password`) ถูกจำกัดจำนวนครั้ง
+> (ดู `middleware/rateLimit.js`) ถ้ารันหลัง reverse proxy ให้ตั้ง `TRUST_PROXY=1` ใน `.env` เพื่อให้นับตาม IP จริงของผู้ใช้
+
 > 💡 แนะนำให้เพิ่ม script ที่ root `package.json` ของโปรเจกต์ Vite เพื่อรัน frontend + backend พร้อมกันด้วย `concurrently`:
 > ```json
 > "scripts": {

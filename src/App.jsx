@@ -8,6 +8,7 @@ import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function Unauthorized() {
   return (
@@ -31,8 +32,9 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* auth gating on "/" intentionally disabled for now */}
-            <Route path="/" element={<Dashboard />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<Dashboard />} />
+            </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

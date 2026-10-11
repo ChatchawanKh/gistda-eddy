@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Box, Paper, Typography } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useAuth } from "../context/auth-context";
@@ -6,6 +6,7 @@ import { useAuth } from "../context/auth-context";
 export default function ProtectedRoute({ requiredRole }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   const theme = useTheme();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -65,7 +66,8 @@ export default function ProtectedRoute({ requiredRole }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // แนบหน้าปัจจุบันไปด้วย -> Login.jsx จะพากลับมาหน้านี้หลัง login สำเร็จ
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (requiredRole === "admin" && !isAdmin) {

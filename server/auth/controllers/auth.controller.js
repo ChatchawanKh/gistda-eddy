@@ -7,6 +7,9 @@ import { isAllowedEmail } from '../utils/emailDomain.js';
 import { generateResetToken, hashResetToken, RESET_TOKEN_TTL_MINUTES } from '../utils/resetToken.js';
 import { sendPasswordResetEmail } from '../utils/mailer.js';
 
+// bcrypt hash (cost 12 เท่ากับของจริง) ของค่าสุ่มที่ไม่มีใครรู้ — ใช้เทียบตอนไม่พบอีเมล ให้เวลาตอบเท่ากับกรณีพบ
+const DUMMY_PASSWORD_HASH = await hashPassword(crypto.randomBytes(32).toString('hex'));
+
 // hash refresh token ก่อนเก็บลง DB (ไม่เก็บ token จริงแบบ plain text)
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -89,14 +92,17 @@ export async function login(req, res) {
       [email]
     );
 
-    if (result.rows.length === 0) {
+    const user = result.rows[0];
+
+    // ต้องยืนยันรหัสผ่านให้ผ่านก่อน แล้วค่อยบอกสถานะบัญชี — ไม่งั้นคนนอกแค่รู้อีเมล
+    // ก็ไล่เช็คได้ว่าบัญชีไหนมีอยู่ / รออนุมัติ / ถูกระงับ
+    // กรณีไม่พบ user ก็ยังรัน bcrypt กับ hash หลอก เพื่อให้เวลาตอบกลับเท่ากัน (กัน timing enumeration)
+    const isMatch = await comparePassword(password, user?.password_hash ?? DUMMY_PASSWORD_HASH);
+    if (!user || !isMatch) {
       return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
     }
 
-    const user = result.rows[0];
-
     // เช็ค "รอการอนุมัติ" ก่อนเช็ค "ถูกระงับ" เสมอ เพราะเป็นคนละสถานะกัน
-    // (ไม่ใช้ password ยืนยันก่อนเช็คสถานะ เพื่อไม่ให้เดารหัสผ่านมั่ว ๆ แล้วรู้สถานะบัญชีคนอื่นได้)
     if (!user.is_approved) {
       return res.status(403).json({
         message: 'บัญชีนี้ยังไม่ได้รับการอนุมัติจากผู้ดูแลระบบ กรุณารอการอนุมัติก่อนเข้าสู่ระบบ',
@@ -104,11 +110,6 @@ export async function login(req, res) {
     }
     if (!user.is_active) {
       return res.status(403).json({ message: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ' });
-    }
-
-    const isMatch = await comparePassword(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
     }
 
     const accessToken = generateAccessToken(user);

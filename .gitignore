@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables (มีค่าลับ — ห้าม commit; ใช้ .env.example เป็นแม่แบบ)
+.env
+.env.*
+!.env.example
