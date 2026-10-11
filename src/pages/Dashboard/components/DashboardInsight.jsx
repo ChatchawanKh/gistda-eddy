@@ -322,7 +322,7 @@ export default function DashboardInsight({ things, loading, error }) {
             </Box>
 
             <Typography variant="body2">
-              สรุปภาพรวมและวิเคราะห์ข้อมูลเชิงลึกของทุกสถานีตรวจวัดในหน้าเดียว
+              สรุปภาพรวมและวิเคราะห์ข้อมูลแต่ละสถานี
             </Typography>
           </Box>
         </Box>
