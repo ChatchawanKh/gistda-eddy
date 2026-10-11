@@ -54,7 +54,7 @@ export default function AuthLayout({ title, subtitle, children }) {
                 variant="caption"
                 sx={{ display: "block", lineHeight: 1.2 }}
               >
-                FLUXSUITE
+                EDDY
               </Typography>
             </Box>
           </Box>

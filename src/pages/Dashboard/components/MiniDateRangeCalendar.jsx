@@ -30,7 +30,16 @@ function toEndOfDayISO(date) {
   return d.toISOString();
 }
 
-export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply }) {
+// minDate/maxDate (ถ้ามี) = วันแรก/วันสุดท้ายที่มีข้อมูล — วันนอกช่วงคลิกไม่ได้
+// และเลื่อนเดือนออกนอกช่วงไม่ได้
+export default function MiniDateRangeCalendar({
+  from,
+  to,
+  anchorDate,
+  minDate,
+  maxDate,
+  onApply,
+}) {
   const theme = useTheme();
   const { primary, secondary, text, divider } = theme.palette;
 
@@ -40,6 +49,14 @@ export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply })
   const [draftFrom, setDraftFrom] = useState(() => (from ? new Date(from) : null));
   const [draftTo, setDraftTo] = useState(() => (to ? new Date(to) : null));
   const [hoverDate, setHoverDate] = useState(null);
+
+  // เทียบระดับ "วัน" (UTC) ให้วันแรก/วันสุดท้ายที่มีข้อมูลยังเลือกได้ทั้งวัน
+  const minDay = minDate ? new Date(toStartOfDayISO(minDate)) : null;
+  const maxDay = maxDate ? new Date(toStartOfDayISO(maxDate)) : null;
+  const isOutOfRange = (date) =>
+    (minDay && date < minDay) || (maxDay && date > maxDay);
+  const canGoPrev = !minDay || viewMonth > startOfMonthUTC(minDay);
+  const canGoNext = !maxDay || viewMonth < startOfMonthUTC(maxDay);
 
   const grid = useMemo(
     () => buildMonthGrid(viewMonth, anchorDate),
@@ -58,6 +75,7 @@ export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply })
   const rangeEnd = draftFrom && previewEnd ? (draftFrom < previewEnd ? previewEnd : draftFrom) : null;
 
   const handleDayClick = (date) => {
+    if (isOutOfRange(date)) return;
     if (!draftFrom || (draftFrom && draftTo)) {
       setDraftFrom(date);
       setDraftTo(null);
@@ -97,13 +115,21 @@ export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply })
     <Box sx={{ p: 2, width: "100%" }}>
       {/* Header: เดือน/ปี + ปุ่มเลื่อนเดือน */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <IconButton size="small" onClick={() => setViewMonth((m) => addMonthsUTC(m, -1))}>
+        <IconButton
+          size="small"
+          disabled={!canGoPrev}
+          onClick={() => setViewMonth((m) => addMonthsUTC(m, -1))}
+        >
           <ChevronLeftRoundedIcon sx={{ fontSize: 20 }} />
         </IconButton>
         <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: text.primary }}>
           {monthLabel}
         </Typography>
-        <IconButton size="small" onClick={() => setViewMonth((m) => addMonthsUTC(m, 1))}>
+        <IconButton
+          size="small"
+          disabled={!canGoNext}
+          onClick={() => setViewMonth((m) => addMonthsUTC(m, 1))}
+        >
           <ChevronRightRoundedIcon sx={{ fontSize: 20 }} />
         </IconButton>
       </Box>
@@ -130,19 +156,21 @@ export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply })
           const inRange =
             !isEndpoint && rangeStart && rangeEnd && date > rangeStart && date < rangeEnd;
           const isPreview = !draftTo && draftFrom && hoverDate && !isEndpoint && inRange;
+          const outOfRange = isOutOfRange(date);
 
           return (
             <Box
               key={idx}
-              onMouseEnter={() => draftFrom && !draftTo && setHoverDate(date)}
+              onMouseEnter={() => !outOfRange && draftFrom && !draftTo && setHoverDate(date)}
               onClick={() => handleDayClick(date)}
+              aria-disabled={outOfRange || undefined}
               sx={{
                 position: "relative",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 height: 34,
-                cursor: "pointer",
+                cursor: outOfRange ? "not-allowed" : "pointer",
                 bgcolor: inRange
                   ? isPreview
                     ? `${primary.main}14`
@@ -166,15 +194,17 @@ export default function MiniDateRangeCalendar({ from, to, anchorDate, onApply })
                   fontWeight: isEndpoint ? 700 : 500,
                   color: isEndpoint
                     ? primary.contrastText
-                    : !inMonth
+                    : !inMonth || outOfRange
                     ? text.disabled
                     : text.primary,
+                  textDecoration: outOfRange && inMonth ? "line-through" : "none",
+                  opacity: outOfRange ? 0.55 : 1,
                   bgcolor: isEndpoint ? primary.main : "transparent",
                   border: isAnchor && !isEndpoint ? `1.5px solid ${secondary.main}` : "1.5px solid transparent",
                   transition: "background-color 0.12s ease",
-                  "&:hover": {
-                    bgcolor: isEndpoint ? primary.dark : `${primary.main}24`,
-                  },
+                  "&:hover": outOfRange
+                    ? {}
+                    : { bgcolor: isEndpoint ? primary.dark : `${primary.main}24` },
                 }}
               >
                 {date.getUTCDate()}

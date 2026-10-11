@@ -2,6 +2,16 @@
 // ฟังก์ชันช่วยสำหรับหน้า "อินไซต์ข้อมูล": หาตัวแปรลมจากชื่อ ObservedProperty
 // และคำนวณข้อมูลสำหรับ wind rose (กราฟทิศทาง+ความเร็วลมแบบเรดาร์)
 
+// ชื่อคอลัมน์ใน output ของ EddyPro ที่ FROST เก็บไว้ใน Datastream.properties.eddypro_column
+export const WIND_SPEED_COLUMN = "wind_speed";
+export const WIND_DIRECTION_COLUMN = "wind_dir";
+
+// หา Datastream จาก properties.eddypro_column (เทียบตรงตัว) — แม่นกว่าการจับคำในชื่อ
+// เพราะเป็น key คงที่จากไฟล์ต้นทาง ไม่ขึ้นกับการตั้งชื่อ/แปลชื่อตัวแปร
+export function findDatastreamByEddyproColumn(datastreams, column) {
+  return datastreams.find((ds) => ds.properties?.eddypro_column === column);
+}
+
 // ค้นหา Datastream จาก keyword ในชื่อ (case-insensitive) — ใช้หา "ความเร็วลม"
 // และ "ทิศทางลม" จากรายชื่อ ObservedProperty ที่ตั้งไว้ไม่แน่นอนในแต่ละสถานี
 export function findDatastreamByKeywords(datastreams, keywords) {

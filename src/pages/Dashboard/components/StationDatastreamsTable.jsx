@@ -20,16 +20,14 @@ export default function StationDatastreamsTable({
   onSelectDatastream,
 }) {
   const theme = useTheme();
-  const { text, background, divider, primary } = theme.palette;
+  const { text, divider, primary } = theme.palette;
   const loc = thing.Locations?.[0]?.location?.coordinates;
   const interactive = typeof onSelectDatastream === "function";
 
   return (
     <TableContainer
       sx={{
-        border: `1px solid ${divider}`,
-        borderRadius: `${theme.shape.borderRadius + 2}px`,
-        bgcolor: background.paper,
+        ...theme.custom.card,
         height: "100%",
       }}
     >

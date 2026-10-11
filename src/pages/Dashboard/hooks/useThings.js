@@ -11,8 +11,11 @@ export function useThings() {
     setLoading(true);
     setError(null);
     frostFetch(
-      "/Things?$expand=Locations,Datastreams($select=name,description,unitOfMeasurement,@iot.id" +
-        ";$expand=ObservedProperty($select=name),Observations($orderby=phenomenonTime desc;$top=1))"
+      // phenomenonTime = ช่วงเวลาที่มีข้อมูลของ Datastream (ใช้จำกัดตัวเลือกวันที่)
+      // properties.eddypro_column = key คงที่ของตัวแปร (ใช้หาตัวแปรลม)
+      "/Things?$expand=Locations,Datastreams($select=name,description,unitOfMeasurement,phenomenonTime,properties,@iot.id" +
+        ";$expand=ObservedProperty($select=name),Sensor($select=name,description)" +
+        ",Observations($orderby=phenomenonTime desc;$top=1))"
     )
       .then((data) => {
         if (active) setThings(data.value || []);

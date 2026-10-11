@@ -137,6 +137,18 @@ function MapResizeHandler({ resizeKey }) {
   return null;
 }
 
+// โหมด fillHeight ความสูงแผนที่ตามคอลัมน์ข้าง ๆ ซึ่งเปลี่ยนได้ตลอด (เช่น KPI
+// โหลดเสร็จ) จึงต้องคอยสังเกตขนาดกล่องแล้ว invalidateSize ให้ tile เต็มกรอบ
+function MapAutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 // ส่ง instance ของ Leaflet map ออกมาให้ component แม่ใช้งาน (ปุ่ม zoom/home
 // custom ที่วาดด้วย MUI อยู่นอก <MapContainer> จึงต้องได้ map instance มาจาก
 // ตรงนี้แทนการใช้ useMap() ตรง ๆ)
@@ -152,6 +164,12 @@ export default function StationsMap({
   things,
   selectedStationId,
   onSelectStation,
+  // true = สูงเต็มกล่องแม่ (ขั้นต่ำ BASE_HEIGHT) แทนความสูงคงที่
+  fillHeight = false,
+  // ส่ง onToggleExpand มา = ปุ่มขยายเปลี่ยนเป็น "ขยายด้านข้าง" ให้ component แม่
+  // ปรับความกว้างคอลัมน์เอง (expanded เป็น controlled) แทนการเพิ่มความสูง
+  expanded,
+  onToggleExpand,
 }) {
   const theme = useTheme();
   const {
@@ -162,7 +180,14 @@ export default function StationsMap({
     background,
   } = theme.palette;
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpandedTall, setIsExpandedTall] = useState(false);
+  const expandSideways = Boolean(onToggleExpand);
+  // isExpanded = ขยายความสูง (โหมดเดิม) — โหมดด้านข้างไม่แตะความสูง
+  const isExpanded = !expandSideways && isExpandedTall;
+  const isExpandActive = expandSideways ? Boolean(expanded) : isExpandedTall;
+  const handleToggleExpand = expandSideways
+    ? onToggleExpand
+    : () => setIsExpandedTall((v) => !v);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [basemap, setBasemap] = useState("street"); // "street" | "satellite"
   const [mapInstance, setMapInstance] = useState(null);
@@ -214,7 +239,7 @@ export default function StationsMap({
       <Box
         sx={{
           border: `1px solid ${divider}`,
-          borderRadius: `${theme.shape.borderRadius + 2}px`,
+          borderRadius: `${theme.shape.borderRadius}px`,
           p: 3,
           textAlign: "center",
         }}
@@ -230,7 +255,9 @@ export default function StationsMap({
     ? "100vh"
     : isExpanded
       ? EXPANDED_HEIGHT
-      : BASE_HEIGHT;
+      : fillHeight
+        ? "100%"
+        : BASE_HEIGHT;
   const activeBasemap = BASEMAPS[basemap];
 
   return (
@@ -241,10 +268,12 @@ export default function StationsMap({
         top: isFullscreen ? 0 : "auto",
         left: isFullscreen ? 0 : "auto",
         width: isFullscreen ? "100vw" : "100%",
-        borderRadius: isFullscreen ? 0 : `${theme.shape.borderRadius + 2}px`,
+        borderRadius: isFullscreen ? 0 : `${theme.shape.borderRadius}px`,
         overflow: "hidden",
         border: isFullscreen ? "none" : `1px solid ${divider}`,
         height: mapHeight,
+        minHeight: isFullscreen ? undefined : BASE_HEIGHT,
+        flex: fillHeight && !isFullscreen && !isExpanded ? 1 : undefined,
         transition: `height ${HEIGHT_TRANSITION_MS}ms ease`,
         bgcolor: background.paper,
         "& .leaflet-container": { height: "100%", width: "100%" },
@@ -259,32 +288,20 @@ export default function StationsMap({
           zIndex: 1200,
           display: "flex",
           flexDirection: "column",
-          borderRadius: "10px",
+          ...theme.custom.floatingControl,
           overflow: "hidden",
-          border: `1px solid ${divider}`,
-          boxShadow: "0 2px 8px rgba(15, 23, 42, 0.14)",
-          bgcolor: background.paper,
         }}
       >
         <Tooltip
           title="ซูมเข้า"
           placement="right"
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: theme.palette.primary.main,
-                borderRadius: 50,
-                fontWeight: 400,
-              },
-            },
-          }}
         >
           <IconButton
             size="small"
             onClick={handleZoomIn}
             sx={{
               borderRadius: 0,
-              "&:hover": { bgcolor: `${theme.palette.primary.main}12` },
+              "&:hover": { bgcolor: theme.palette.action.hover },
             }}
           >
             <AddRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
@@ -295,22 +312,13 @@ export default function StationsMap({
         <Tooltip
           title="ซูมออก"
           placement="right"
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: theme.palette.primary.main,
-                borderRadius: 50,
-                fontWeight: 400,
-              },
-            },
-          }}
         >
           <IconButton
             size="small"
             onClick={handleZoomOut}
             sx={{
               borderRadius: 0,
-              "&:hover": { bgcolor: `${theme.palette.primary.main}12` },
+              "&:hover": { bgcolor: theme.palette.action.hover },
             }}
           >
             <RemoveRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
@@ -320,22 +328,13 @@ export default function StationsMap({
         <Tooltip
           title="ทั้งประเทศ"
           placement="right"
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: theme.palette.primary.main,
-                borderRadius: 50,
-                fontWeight: 400,
-              },
-            },
-          }}
         >
           <IconButton
             size="small"
             onClick={handleGoHome}
             sx={{
               borderRadius: 0,
-              "&:hover": { bgcolor: `${theme.palette.primary.main}12` },
+              "&:hover": { bgcolor: theme.palette.action.hover },
             }}
           >
             <HomeRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
@@ -345,22 +344,13 @@ export default function StationsMap({
         <Tooltip
           title={basemap === "street" ? "ภาพถ่ายดาวเทียม" : "แผนที่เริ่มต้น"}
           placement="right"
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: theme.palette.primary.main,
-                borderRadius: 50,
-                fontWeight: 400,
-              },
-            },
-          }}
         >
           <IconButton
             size="small"
             onClick={toggleBasemap}
             sx={{
               borderRadius: 0,
-              "&:hover": { bgcolor: `${theme.palette.primary.main}12` },
+              "&:hover": { bgcolor: theme.palette.action.hover },
             }}
           >
             {basemap === "street" ? (
@@ -386,52 +376,44 @@ export default function StationsMap({
         }}
       >
         <Tooltip
-          title={isExpanded ? "ย่อแผนที่กลับขนาดเดิม" : "ขยายแผนที่ให้สูงขึ้น"}
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: theme.palette.primary.main,
-                borderRadius: 50,
-                fontWeight: 400,
-              },
-            },
-          }}
+          title={
+            isExpandActive
+              ? "ย่อแผนที่กลับขนาดเดิม"
+              : expandSideways
+                ? "ขยายแผนที่ให้กว้างขึ้น"
+                : "ขยายแผนที่ให้สูงขึ้น"
+          }
         >
           <IconButton
             size="small"
-            onClick={() => setIsExpanded((v) => !v)}
+            onClick={handleToggleExpand}
             sx={{
-              bgcolor: background.paper,
-              border: `1px solid ${divider}`,
-              boxShadow: "0 2px 8px rgba(15, 23, 42, 0.14)",
+              ...theme.custom.floatingControl,
               "&:hover": {
                 bgcolor: background.paper,
                 borderColor: theme.palette.primary.main,
               },
             }}
           >
-            <HeightRoundedIcon sx={{ fontSize: 18, color: text.secondary }} />
+            <HeightRoundedIcon
+              sx={{
+                fontSize: 18,
+                color: isExpandActive
+                  ? theme.palette.primary.main
+                  : text.secondary,
+                transform: expandSideways ? "rotate(90deg)" : "none",
+              }}
+            />
           </IconButton>
         </Tooltip>
         <Tooltip
           title={isFullscreen ? "ออกจากโหมดเต็มจอ" : "ดูแผนที่แบบเต็มจอ"}
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: theme.palette.primary.main,
-                borderRadius: 50,
-                fontWeight: 400,
-              },
-            },
-          }}
         >
           <IconButton
             size="small"
             onClick={toggleFullscreen}
             sx={{
-              bgcolor: background.paper,
-              border: `1px solid ${divider}`,
-              boxShadow: "0 2px 8px rgba(15, 23, 42, 0.14)",
+              ...theme.custom.floatingControl,
               "&:hover": {
                 bgcolor: background.paper,
                 borderColor: theme.palette.primary.main,
@@ -471,6 +453,7 @@ export default function StationsMap({
         {selectedPoint && <FlyToSelected point={selectedPoint} />}
         <MapResizeHandler resizeKey={`${isExpanded}-${isFullscreen}`} />
         <MapInstanceSetter onReady={setMapInstance} />
+        {fillHeight && <MapAutoResize />}
 
         {things.map((t) => {
           const position = getStationLatLng(t);
@@ -495,12 +478,35 @@ export default function StationsMap({
                 click: () => onSelectStation(String(t["@iot.id"])),
               }}
             >
+              {/* ข้อมูลใน popup มาจาก FROST ทั้งหมด: Thing (ชื่อ/properties),
+                  Location.name, Datastreams และ Observation ล่าสุด
+                  แสดงเฉพาะ field ที่มีค่า */}
               <Popup>
                 <strong>{t.name}</strong>
+                {t.Locations?.[0]?.name && (
+                  <>
+                    <br />
+                    {t.Locations[0].name}
+                  </>
+                )}
+                {t.properties?.institute && (
+                  <>
+                    <br />
+                    หน่วยงาน {t.properties.institute}
+                  </>
+                )}
                 <br />
                 {(t.Datastreams || []).length} Datastreams
                 <br />
                 อัปเดต {timeAgoLabel(latest)}
+                <br />
+                พิกัด {position[0]?.toFixed(4)}, {position[1]?.toFixed(4)}
+                {Number.isFinite(t.properties?.elevation_m) && (
+                  <>
+                    <br />
+                    ความสูง {t.properties.elevation_m.toLocaleString("th-TH")} ม.
+                  </>
+                )}
               </Popup>
             </Marker>
           );

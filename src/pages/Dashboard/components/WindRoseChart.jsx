@@ -90,9 +90,7 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
   }, [speedRows, dirRows]);
 
   const cardSx = {
-    border: `1px solid ${divider}`,
-    borderRadius: `${theme.shape.borderRadius + 2}px`,
-    bgcolor: background.paper,
+    ...theme.custom.card,
     p: 2,
     minHeight: 420,
     display: "flex",

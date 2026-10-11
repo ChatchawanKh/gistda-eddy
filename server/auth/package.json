@@ -1,7 +1,7 @@
 {
   "name": "gistda-fluxsuite-auth-server",
   "version": "1.0.0",
-  "description": "Auth API (JWT + PostgreSQL) สำหรับ GISTDA-FLUXSUITE",
+  "description": "Auth API (JWT + PostgreSQL) สำหรับ GISTDA Eddy",
   "main": "server.js",
   "type": "module",
   "scripts": {

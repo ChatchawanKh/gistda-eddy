@@ -13,9 +13,18 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import { buildDatePresets, matchPreset, formatRangeLabel } from "../utils/dateRangePresets";
 import MiniDateRangeCalendar from "./MiniDateRangeCalendar";
 
-export default function DateRangePickerModern({ from, to, onChange, anchorDate }) {
+// minDate/maxDate = ช่วงที่มีข้อมูลจริง (Datastream.phenomenonTime) — preset ที่ไม่ทับ
+// ช่วงนี้เลยจะถูกปิด และปฏิทินเลือกวันนอกช่วงไม่ได้
+export default function DateRangePickerModern({
+  from,
+  to,
+  onChange,
+  anchorDate,
+  minDate,
+  maxDate,
+}) {
   const theme = useTheme();
-  const { background, divider, text, primary } = theme.palette;
+  const { divider, text, primary } = theme.palette;
   const isMobile = useMediaQuery("(max-width:600px)");
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -23,6 +32,11 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
   // preset ผูกกับ "วันที่ล่าสุดที่มีข้อมูลจริง" (anchorDate) ไม่ใช่วันนี้จริง ๆ
   const presets = useMemo(() => buildDatePresets(anchorDate), [anchorDate]);
   const activeKey = useMemo(() => matchPreset(presets, from, to), [presets, from, to]);
+  const minMs = minDate ? new Date(minDate).getTime() : -Infinity;
+  const maxMs = maxDate ? new Date(maxDate).getTime() : Infinity;
+  const hasData = (p) =>
+    new Date(p.range.to).getTime() >= minMs &&
+    new Date(p.range.from).getTime() <= maxMs;
 
   const handlePreset = (preset) => {
     onChange(preset.range);
@@ -44,15 +58,10 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
         sx={{
           fontSize: 13,
           color: text.secondary,
-          border: `1px solid ${divider}`,
-          textTransform: "none",
           fontWeight: 400,
-          bgcolor: background.paper,
           px: 1.5,
           py: 0.85,
-          borderRadius: 0.5,
           whiteSpace: "nowrap",
-          "&:hover": { borderColor: primary.main, bgcolor: background.paper },
         }}
       >
         {formatRangeLabel(from, to)}
@@ -64,10 +73,10 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
               fontSize: 10.5,
               fontWeight: 700,
               color: primary.main,
-              bgcolor: `${primary.main}1a`,
+              bgcolor: theme.palette.action.hover,
               px: 0.75,
               py: 0.15,
-              borderRadius: "6px",
+              borderRadius: `${theme.custom.radiusSm}px`,
             }}
           >
             กำหนดเอง
@@ -85,11 +94,8 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
             sx: {
               mt: 0.75,
               border: `1px solid ${divider}`,
-              borderRadius: `${theme.shape.borderRadius + 4}px`,
-              boxShadow:
-                theme.palette.mode === "dark"
-                  ? "0 12px 32px #000000aa"
-                  : "0 12px 32px #00000022",
+              borderRadius: `${theme.shape.borderRadius}px`,
+              boxShadow: theme.shadows[6],
               width: isMobile ? "94vw" : 560,
               maxWidth: "97vw",
             },
@@ -109,10 +115,12 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
           >
             {presets.map((p) => {
               const active = activeKey === p.key;
+              const disabled = !hasData(p);
               return (
                 <Box
                   key={p.key}
-                  onClick={() => handlePreset(p)}
+                  onClick={disabled ? undefined : () => handlePreset(p)}
+                  aria-disabled={disabled}
                   sx={{
                     display: "flex",
                     alignItems: "center",
@@ -120,11 +128,17 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
                     px: 2,
                     py: 1,
                     fontSize: 13,
-                    cursor: "pointer",
-                    color: active ? primary.main : text.primary,
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    color: disabled
+                      ? text.disabled
+                      : active
+                        ? primary.main
+                        : text.primary,
                     fontWeight: active ? 700 : 500,
                     bgcolor: active ? `${primary.main}12` : "transparent",
-                    "&:hover": { bgcolor: active ? `${primary.main}1a` : `${text.primary}0a` },
+                    "&:hover": disabled
+                      ? {}
+                      : { bgcolor: active ? `${primary.main}1a` : `${text.primary}0a` },
                   }}
                 >
                   {p.label}
@@ -140,6 +154,8 @@ export default function DateRangePickerModern({ from, to, onChange, anchorDate }
               from={from}
               to={to}
               anchorDate={anchorDate}
+              minDate={minDate}
+              maxDate={maxDate}
               onApply={handleCalendarApply}
             />
           </Box>

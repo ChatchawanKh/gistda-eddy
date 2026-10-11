@@ -134,6 +134,36 @@ const theme = createTheme({
   // Custom tokens (นอกเหนือจาก MUI spec) — ใช้ร่วมกันทั่วแอป
   // ---------------------------------------------------------------------------
   custom: {
+    // มุมโค้งขององค์ประกอบย่อยในการ์ด (icon badge, ป้ายเล็ก) — เท่ากับ MuiChip
+    radiusSm: 8,
+    // กล่องการ์ดของหน้า Dashboard (การ์ดกราฟ / แผนที่ / แถบค้นหา ฯลฯ) ให้หน้าตา
+    // ตรงกับ MuiCard ด้านล่าง: ขอบ GRAY[200] + มุม RADIUS + เงา SHADOW_SM
+    card: {
+      backgroundColor: '#FFFFFF',
+      border: `1px solid ${GRAY[200]}`,
+      borderRadius: `${RADIUS}px`,
+      boxShadow: SHADOW_SM,
+    },
+    // การ์ดที่คลิกได้ — hover ยกเงาเป็น SHADOW_MD และขอบเป็นสีหลัก
+    cardInteractive: {
+      cursor: 'pointer',
+      transition: 'border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease',
+      '&:hover': {
+        borderColor: BLUE[400],
+        boxShadow: SHADOW_MD,
+      },
+      '&:focus-visible': {
+        outline: `2px solid ${BLUE[300]}`,
+        outlineOffset: 2,
+      },
+    },
+    // ปุ่มลอยบนแผนที่ (zoom / home / basemap / ขยาย / เต็มจอ)
+    floatingControl: {
+      backgroundColor: '#FFFFFF',
+      border: `1px solid ${GRAY[200]}`,
+      borderRadius: '8px',
+      boxShadow: SHADOW_MD,
+    },
     // ปุ่มเมนู 3 จุด (MoreVertRoundedIcon) ที่มุมขวาของหัวการ์ดกราฟทุกใบ
     // ทุกกราฟใช้ style ก้อนเดียวกันนี้ (BarChart / Heatmap / WindRose / RangedChart)
     chartMenuButton: {

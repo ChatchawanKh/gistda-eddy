@@ -31,7 +31,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = location.state?.from?.pathname || "/";
+  const redirectTo = location.state?.from?.pathname || "/dashboard";
   const infoMessage = location.state?.message || "";
 
   async function handleSubmit(e) {

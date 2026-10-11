@@ -32,9 +32,7 @@ export default function BarChartCard({
   const daily = useMemo(() => groupDailyAverage(rows), [rows]);
 
   const cardSx = {
-    border: `1px solid ${divider}`,
-    borderRadius: `${theme.shape.borderRadius + 2}px`,
-    bgcolor: background.paper,
+    ...theme.custom.card,
     p: 2,
     minHeight: 300,
     display: "flex",
@@ -95,7 +93,6 @@ export default function BarChartCard({
   return (
     <Box sx={cardSx}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.25 }}>
-        <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: seriesColor, flexShrink: 0 }} />
         <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: text.primary }}>
           ค่าเฉลี่ยรายวัน — {variableName || "ตัวแปรหลัก"}
         </Typography>
@@ -117,7 +114,7 @@ export default function BarChartCard({
           </Typography>
         ) : (
           // key บังคับสร้างกราฟใหม่เมื่อตัวแปร/ช่วงเวลาเปลี่ยน (ดู WindRoseChart)
-          <Box key={`${datastreamId}-${from}-${to}`} sx={{ width: "100%" }}>
+          <Box key={`${datastreamId}-${from}-${to}-${unit}`} sx={{ width: "100%" }}>
             <HighchartsReact
               ref={chartRef}
               highcharts={Highcharts}

@@ -29,7 +29,7 @@ if (isSmtpConfigured) {
  * @param {string} resetUrl - ลิงก์เต็มที่ frontend สร้างไว้ เช่น http://localhost:5173/reset-password?token=xxxx
  */
 export async function sendPasswordResetEmail(toEmail, resetUrl) {
-  const subject = 'คำขอตั้งรหัสผ่านใหม่ — GISTDA-FLUXSUITE';
+  const subject = 'คำขอตั้งรหัสผ่านใหม่ — GISTDA Eddy';
   const html = `
     <p>เราได้รับคำขอตั้งรหัสผ่านใหม่สำหรับบัญชีนี้</p>
     <p><a href="${resetUrl}">คลิกที่นี่เพื่อตั้งรหัสผ่านใหม่</a></p>
@@ -45,7 +45,7 @@ export async function sendPasswordResetEmail(toEmail, resetUrl) {
   }
 
   return transporter.sendMail({
-    from: process.env.SMTP_FROM || '"GISTDA-FLUXSUITE" <no-reply@gistda.or.th>',
+    from: process.env.SMTP_FROM || '"GISTDA Eddy" <no-reply@gistda.or.th>',
     to: toEmail,
     subject,
     html,
