@@ -1,9 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"],
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://gistda-fluxsuite-api.onrender.com/api/:path*"
+      "source": "/api/(.*)",
+      "destination": "/api"
     },
     {
       "source": "/(.*)",

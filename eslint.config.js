@@ -21,9 +21,9 @@ export default defineConfig([
     },
   },
 
-  // ----- Backend: server/auth/ (Node.js, ESM) -----
+  // ----- Backend: server/auth/ + api/ (Vercel Function) (Node.js, ESM) -----
   {
-    files: ['server/**/*.js'],
+    files: ['server/**/*.js', 'api/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,   // เพิ่ม process, __dirname, module, Buffer ฯลฯ

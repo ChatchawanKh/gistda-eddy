@@ -28,7 +28,8 @@ const pool = new Pool({
 
 pool.on('error', (err) => {
   console.error('[DB] Unexpected error on idle client', err);
-  process.exit(-1);
+  // บน Vercel ไม่ต้อง exit — pool ทิ้ง client ที่เสียไปเองแล้ว และ function instance ถูกจัดการโดย platform
+  if (!process.env.VERCEL) process.exit(-1);
 });
 
 pool.on('connect', () => {
