@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Vercel CLI (project link + .env.local ที่ vercel link สร้าง — ถูกกันด้วย .env.* ด้านบนแล้ว)
+.vercel
