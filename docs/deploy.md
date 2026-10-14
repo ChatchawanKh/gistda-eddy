@@ -31,7 +31,7 @@ Frontend และ API อยู่โดเมนเดียวกัน: `ver
 | `DB_SSL` | `true` |
 | `NODE_ENV` | `production` |
 | `TRUST_PROXY` | `1` |
-| `CLIENT_ORIGIN` | URL ของเว็บ เช่น `https://gistda-fluxsuite.vercel.app` |
+| `CLIENT_ORIGIN` | URL ของเว็บ เช่น `https://gistda-eddy.vercel.app` |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | ค่าสุ่มคนละค่า: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
 | `JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` | `15m` / `7d` |
 | `REMEMBER_ME_EXPIRES_IN` / `SESSION_EXPIRES_IN` | `30d` / `1d` |
