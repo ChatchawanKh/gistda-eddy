@@ -12,7 +12,7 @@
 | URL | https://gistda-eddy.vercel.app |
 | API | https://gistda-eddy.vercel.app/api/* (health: `/api/health`) |
 | โดเมนเดิม | `gistda-fluxsuite.vercel.app` → redirect 308 มาที่โดเมนใหม่ |
-| Source | GitHub `ChatchawanKh/gistda-fluxsuite` (มีแผนเปลี่ยนชื่อเป็น `gistda-eddy`), branch `main` |
+| Source | GitHub `ChatchawanKh/gistda-eddy` (เดิม `gistda-fluxsuite` — URL เดิม GitHub redirect ให้), branch `main` |
 | ค่าใช้จ่าย | 0 บาท — ใช้แผนฟรีทั้งหมด |
 
 ```
@@ -127,7 +127,6 @@ Vercel → project `gistda-eddy` → Logs (กรอง `/api`) — error ตอ
 
 ## สิ่งที่ยังค้าง / ควรทำก่อนใช้งานจริง
 
-- [ ] เปลี่ยนชื่อ GitHub repo เป็น `gistda-eddy` (Settings → Repository name) แล้วอัปเดต `git remote set-url origin`
 - [ ] เปลี่ยน `ENFORCE_EMAIL_DOMAIN=true`
 - [ ] ตั้ง SMTP เพื่อส่งอีเมล reset password จริง
 - [ ] เปลี่ยนรหัสผ่านบัญชี `superadmin@example.com` (รหัสปัจจุบันเคยถูกส่งในแชต)
