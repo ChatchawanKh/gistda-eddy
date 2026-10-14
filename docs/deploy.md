@@ -1,5 +1,7 @@
 # Deploy ขึ้น cloud แบบฟรี (Vercel + Neon)
 
+> คู่มือตั้งระบบใหม่ตั้งแต่ศูนย์ — สถานะ prod ปัจจุบันและวิธีดูแล ดู [`production.md`](production.md)
+
 | ส่วน | บริการ | ไฟล์ |
 |---|---|---|
 | Frontend (React/Vite) | Vercel (static) | `vercel.json` |
