@@ -6,12 +6,21 @@ dotenv.config();
 
 const { Pool } = pg;
 
+// บน cloud (Neon/Supabase ฯลฯ) ให้ตั้ง DATABASE_URL ค่าเดียวแทน DB_* ทั้งชุด
+// และ DB_SSL=true เพราะผู้ให้บริการเหล่านี้บังคับเชื่อมต่อผ่าน SSL
+const connection = process.env.DATABASE_URL
+  ? { connectionString: process.env.DATABASE_URL }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres',
+      database: process.env.DB_NAME || 'gistda_fluxsuite',
+    };
+
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT) || 5432,
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'gistda_fluxsuite',
+  ...connection,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
   max: 10,                     // จำนวน connection สูงสุดใน pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
