@@ -1,6 +1,6 @@
 -- server/auth/db/migrations/002_add_password_reset_tokens.sql
 -- ใช้กรณีที่ฐานข้อมูลรัน schema.sql (เวอร์ชันเก่า) ไปแล้ว และไม่อยากรันใหม่ทั้งหมด
--- รันไฟล์นี้แทนใน PG Admin 17 (Query Tool บน database gistda_fluxsuite)
+-- รันไฟล์นี้แทนใน PG Admin 17 (Query Tool บน database gistda_eddy)
 
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     token_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,6 +1,6 @@
 -- server/auth/db/migrations/003_add_is_approved.sql
 -- ใช้กรณีฐานข้อมูลรัน schema.sql เวอร์ชันเก่าไปแล้ว และไม่อยากรันใหม่ทั้งหมด
--- รันไฟล์นี้แทนใน PG Admin 17 (Query Tool บน database gistda_fluxsuite)
+-- รันไฟล์นี้แทนใน PG Admin 17 (Query Tool บน database gistda_eddy)
 
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT TRUE;

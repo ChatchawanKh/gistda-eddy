@@ -1,6 +1,6 @@
-# GISTDA-FLUXSUITE — Auth API (server/auth)
+# GISTDA Eddy — Auth API (server/auth)
 
-ระบบยืนยันตัวตนและบริหารจัดการสิทธิ์ผู้ใช้งาน (JWT + PostgreSQL) สำหรับโปรเจกต์ GISTDA-FLUXSUITE
+ระบบยืนยันตัวตนและบริหารจัดการสิทธิ์ผู้ใช้งาน (JWT + PostgreSQL) สำหรับโปรเจกต์ GISTDA Eddy
 
 ## โครงสร้างโฟลเดอร์
 
@@ -33,7 +33,7 @@ server/auth/
 
 ## 1) ติดตั้งฐานข้อมูล (PG Admin 17 / PostgreSQL)
 
-1. เปิด PG Admin 17 → สร้างฐานข้อมูลใหม่ชื่อ `gistda_fluxsuite`
+1. เปิด PG Admin 17 → สร้างฐานข้อมูลใหม่ชื่อ `gistda_eddy`
 2. เปิด Query Tool บนฐานข้อมูลนั้น แล้วรันไฟล์ `db/schema.sql` ทั้งหมด
    - จะได้ตาราง `roles`, `users`, `refresh_tokens`, `audit_logs`
    - ตาราง `roles` จะถูก seed ด้วย 2 สิทธิ์: `admin`, `user` (ตรงตามข้อ 5.7.3)

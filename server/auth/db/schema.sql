@@ -1,5 +1,5 @@
 -- =========================================================
--- GISTDA-FLUXSUITE : Authentication & Authorization Schema
+-- GISTDA Eddy : Authentication & Authorization Schema
 -- Database: PostgreSQL (ทดสอบกับ PG Admin 17)
 -- =========================================================
 -- แนวคิดการออกแบบ:
