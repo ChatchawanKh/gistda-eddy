@@ -1675,7 +1675,7 @@ function RowCheckbox({ user: u, isSelf, isSelected, onToggleSelect }) {
           checked={isSelected}
           onChange={() => onToggleSelect(u.user_id)}
           disabled={isSelf}
-          inputProps={{ "aria-label": `เลือก ${u.email}` }}
+          slotProps={{ input: { "aria-label": `เลือก ${u.email}` } }}
           sx={{ "&.Mui-disabled": { color: "#acacac" } }}
         />
       </span>
@@ -1901,8 +1901,9 @@ const UsersTable = memo(function UsersTable({
     };
   }, [background.paper, primary.main, text.primary]);
 
-  // จอเล็ก (< md): ตาราง 6 คอลัมน์ต้องเลื่อนแนวนอน — แสดงเป็นรายการการ์ดแทน
-  const isCompact = useMediaQuery(theme.breakpoints.down("md"));
+  // ต่ำกว่า lg: ตาราง (minWidth 900) กว้างกว่าพื้นที่เนื้อหาข้าง sidebar ต้องเลื่อนแนวนอน
+  // และคอลัมน์ "การจัดการ" ที่ sticky บังสถานะ — แสดงเป็นรายการการ์ดแทน
+  const isCompact = useMediaQuery(theme.breakpoints.down("lg"));
 
   return (
     <Box
@@ -1934,7 +1935,7 @@ const UsersTable = memo(function UsersTable({
               indeterminate={someSelected}
               onChange={onToggleSelectAll}
               disabled={selectableIds.length === 0}
-              inputProps={{ "aria-label": "เลือกทั้งหมด" }}
+              slotProps={{ input: { "aria-label": "เลือกทั้งหมด" } }}
               sx={{ ml: -0.75, "&.Mui-disabled": { color: "#acacac" } }}
             />
             <Typography sx={{ fontSize: 13, color: text.secondary, flex: 1 }}>

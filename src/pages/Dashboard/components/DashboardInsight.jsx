@@ -373,9 +373,14 @@ export default function DashboardInsight({ things, loading, error }) {
             {...params}
             label="ค้นหาตัวแปร/สาร (ทุกสถานี)"
             placeholder="พิมพ์ชื่อตัวแปรหรือสารที่ต้องการดู"
-            InputProps={{
-              ...params.InputProps,
-              startAdornment: <SearchRoundedIcon sx={filterIconSx} />,
+            // MUI 9: Autocomplete ส่ง props ของ input มาใน params.slotProps.input
+            // (ไม่ใช่ InputProps แบบเดิม) — ต้อง merge ที่นี่ ไม่งั้น ref/endAdornment หาย
+            slotProps={{
+              ...params.slotProps,
+              input: {
+                ...params.slotProps.input,
+                startAdornment: <SearchRoundedIcon sx={filterIconSx} />,
+              },
             }}
           />
         )}
@@ -383,7 +388,7 @@ export default function DashboardInsight({ things, loading, error }) {
 
       <Autocomplete
         size="small"
-        sx={{ minWidth: 220, ...filterFieldSx }}
+        sx={{ minWidth: 250, ...filterFieldSx }}
         popupIcon={<KeyboardArrowDownRoundedIcon sx={{ fontSize: 18 }} />}
         options={things}
         getOptionLabel={(t) => t.name || ""}
@@ -400,9 +405,12 @@ export default function DashboardInsight({ things, loading, error }) {
             {...params}
             label="สถานี"
             placeholder="พิมพ์หรือเลือกสถานีที่ต้องการดู"
-            InputProps={{
-              ...params.InputProps,
-              startAdornment: <LocationOnRoundedIcon sx={filterIconSx} />,
+            slotProps={{
+              ...params.slotProps,
+              input: {
+                ...params.slotProps.input,
+                startAdornment: <LocationOnRoundedIcon sx={filterIconSx} />,
+              },
             }}
           />
         )}
