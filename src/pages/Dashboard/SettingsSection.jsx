@@ -115,11 +115,11 @@ const PasswordChecklist = memo(function PasswordChecklist({ password }) {
           </Fade>
         </Stack>
 
-        {/* Rules — 2 columns */}
+        {/* Rules — 2 columns (จอ xs คอลัมน์เดียว) */}
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
             columnGap: 1.5,
             rowGap: 0.75,
           }}
@@ -375,6 +375,7 @@ export default function SettingsSection() {
                   type="submit"
                   variant="contained"
                   disabled={savingProfile || isProfileUnchanged}
+                  sx={{ width: { xs: "100%", sm: "auto" } }}
                 >
                   {savingProfile ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
                 </Button>
@@ -504,6 +505,7 @@ export default function SettingsSection() {
                   type="submit"
                   variant="contained"
                   disabled={savingPassword || isPasswordInvalid}
+                  sx={{ width: { xs: "100%", sm: "auto" } }}
                 >
                   {savingPassword ? "กำลังบันทึก..." : "เปลี่ยนรหัสผ่าน"}
                 </Button>

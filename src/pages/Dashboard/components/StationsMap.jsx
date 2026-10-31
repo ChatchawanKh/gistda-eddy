@@ -24,6 +24,8 @@ import { timeAgoLabel } from "../utils/formatters";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const BASE_HEIGHT = 340;
+// จอ xs: เตี้ยลงให้เห็นเนื้อหาด้านล่างในจอแรก
+const MOBILE_BASE_HEIGHT = 280;
 const EXPANDED_HEIGHT = 600;
 const HEIGHT_TRANSITION_MS = 250;
 
@@ -149,6 +151,42 @@ function MapAutoResize() {
   return null;
 }
 
+// จอสัมผัส: ปิดการลากแผนที่ด้วยนิ้วเดียวไว้ก่อน ไม่ให้แผนที่ดักนิ้วตอนเลื่อนหน้า
+// แตะแผนที่ 1 ครั้งเพื่อเปิดการลาก แตะนอกกรอบแผนที่แล้วล็อกกลับ (pinch zoom ใช้ได้ตลอด)
+// ปิดลากแล้ว Leaflet ถอด class leaflet-touch-drag ออก นิ้วเดียวจึงเลื่อนหน้าได้ตามปกติ
+function TouchDragGuard({ enabled, onLockChange }) {
+  const map = useMap();
+  useEffect(() => {
+    const isTouch = window.matchMedia?.("(pointer: coarse)").matches;
+    if (!enabled || !isTouch) {
+      map.dragging.enable();
+      onLockChange(false);
+      return undefined;
+    }
+    // กรอบ = กล่องที่ครอบแผนที่ + ปุ่มลอย (แตะปุ่ม zoom ไม่นับว่าแตะนอกแผนที่)
+    const area = map.getContainer().parentElement;
+    const lock = () => {
+      map.dragging.disable();
+      onLockChange(true);
+    };
+    const unlock = () => {
+      map.dragging.enable();
+      onLockChange(false);
+    };
+    const handleOutside = (e) => {
+      if (!area?.contains(e.target)) lock();
+    };
+    lock();
+    map.on("click", unlock);
+    document.addEventListener("touchstart", handleOutside, { passive: true });
+    return () => {
+      map.off("click", unlock);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [enabled, map, onLockChange]);
+  return null;
+}
+
 // ส่ง instance ของ Leaflet map ออกมาให้ component แม่ใช้งาน (ปุ่ม zoom/home
 // custom ที่วาดด้วย MUI อยู่นอก <MapContainer> จึงต้องได้ map instance มาจาก
 // ตรงนี้แทนการใช้ useMap() ตรง ๆ)
@@ -191,6 +229,8 @@ export default function StationsMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [basemap, setBasemap] = useState("street"); // "street" | "satellite"
   const [mapInstance, setMapInstance] = useState(null);
+  // จอสัมผัส: แผนที่ล็อกการลากอยู่ (ดู TouchDragGuard) — ใช้แสดงคำแนะนำ
+  const [touchLocked, setTouchLocked] = useState(false);
   const wrapperRef = useRef(null);
 
   // ซิงก์ state กับสถานะ fullscreen จริงของเบราว์เซอร์ เผื่อผู้ใช้กด Esc
@@ -265,6 +305,9 @@ export default function StationsMap({
       ref={wrapperRef}
       sx={{
         position: isFullscreen ? "fixed" : "relative",
+        // เก็บ z-index ของ Leaflet/ปุ่มบนแผนที่ไว้ข้างใน ไม่ให้ลอยทับแถบตัวกรอง sticky
+        // (fullscreen ใช้ Fullscreen API อยู่ top layer อยู่แล้ว ไม่กระทบ)
+        isolation: "isolate",
         top: isFullscreen ? 0 : "auto",
         left: isFullscreen ? 0 : "auto",
         width: isFullscreen ? "100vw" : "100%",
@@ -272,7 +315,7 @@ export default function StationsMap({
         overflow: "hidden",
         border: isFullscreen ? "none" : `1px solid ${divider}`,
         height: mapHeight,
-        minHeight: isFullscreen ? undefined : BASE_HEIGHT,
+        minHeight: isFullscreen ? undefined : { xs: MOBILE_BASE_HEIGHT, sm: BASE_HEIGHT },
         flex: fillHeight && !isFullscreen && !isExpanded ? 1 : undefined,
         transition: `height ${HEIGHT_TRANSITION_MS}ms ease`,
         bgcolor: background.paper,
@@ -433,6 +476,28 @@ export default function StationsMap({
         </Tooltip>
       </Box>
 
+      {touchLocked && (
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1100,
+            pointerEvents: "none",
+            px: 1.25,
+            py: 0.5,
+            borderRadius: 999,
+            bgcolor: "rgba(15, 23, 42, 0.62)",
+            color: "#fff",
+            fontSize: 11.5,
+            whiteSpace: "nowrap",
+          }}
+        >
+          แตะแผนที่เพื่อเลื่อน · ใช้สองนิ้วเพื่อซูม
+        </Box>
+      )}
+
       <MapContainer
         center={points[0]}
         zoom={7}
@@ -453,6 +518,7 @@ export default function StationsMap({
         {selectedPoint && <FlyToSelected point={selectedPoint} />}
         <MapResizeHandler resizeKey={`${isExpanded}-${isFullscreen}`} />
         <MapInstanceSetter onReady={setMapInstance} />
+        <TouchDragGuard enabled={!isFullscreen} onLockChange={setTouchLocked} />
         {fillHeight && <MapAutoResize />}
 
         {things.map((t) => {

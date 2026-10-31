@@ -136,6 +136,8 @@ const theme = createTheme({
   custom: {
     // มุมโค้งขององค์ประกอบย่อยในการ์ด (icon badge, ป้ายเล็ก) — เท่ากับ MuiChip
     radiusSm: 8,
+    // ความสูงร่วมของทุกช่อง/ปุ่มในแถบตัวกรองของ Dashboard
+    filterControlHeight: 38,
     // กล่องการ์ดของหน้า Dashboard (การ์ดกราฟ / แผนที่ / แถบค้นหา ฯลฯ) ให้หน้าตา
     // ตรงกับ MuiCard ด้านล่าง: ขอบ GRAY[200] + มุม RADIUS + เงา SHADOW_SM
     card: {
@@ -174,6 +176,8 @@ const theme = createTheme({
       '&:hover': { backgroundColor: GRAY[100], color: GRAY[700] },
       '&.Mui-focusVisible': { backgroundColor: GRAY[100] },
       '&.Mui-disabled': { color: GRAY[300] },
+      // จอสัมผัส: ขยายพื้นที่กดเป็นราว 36px (ไอคอนขนาดเท่าเดิม)
+      '@media (pointer: coarse)': { padding: '8px' },
     },
     // Paper ของ dropdown menu ให้เข้าชุดกับเมนู export เดิมของ Highcharts
     chartMenuPaper: {
@@ -417,7 +421,9 @@ const theme = createTheme({
           '& fieldset': {
             borderColor: GRAY[300],
           },
-          '&:hover fieldset': {
+          // ใช้ selector เดียวกับค่า default ของ MUI (.MuiOutlinedInput-notchedOutline)
+          // ไม่งั้น specificity แพ้ แล้วขอบตอน hover กลายเป็นสีดำ (text.primary)
+          '&:hover:not(.Mui-disabled):not(.Mui-focused) .MuiOutlinedInput-notchedOutline': {
             borderColor: BLUE[400],
           },
           '&.Mui-focused': {

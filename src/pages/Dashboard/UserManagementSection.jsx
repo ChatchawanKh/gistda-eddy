@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { useTheme, alpha } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 import {
   TableContainer,
@@ -51,6 +52,8 @@ import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSetting
 import UnfoldMoreRoundedIcon from "@mui/icons-material/UnfoldMoreRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
+import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 
 import axiosClient from "../../api/axiosClient";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -75,6 +78,14 @@ const SORT_ACCESSORS = {
   last_login_at: (u) =>
     u.last_login_at ? new Date(u.last_login_at).getTime() : 0,
 };
+
+// ตัวเลือกเรียงลำดับของรายการแบบการ์ด (จอเล็ก) — ตรงกับหัวตารางที่กดเรียงได้
+const SORT_FIELDS = [
+  { field: "email", label: "ผู้ใช้งาน" },
+  { field: "role_name", label: "สิทธิ์" },
+  { field: "status", label: "สถานะ" },
+  { field: "last_login_at", label: "เข้าใช้งานล่าสุด" },
+];
 
 const BULK_ACTION_LABELS = {
   activate: {
@@ -237,11 +248,11 @@ const PasswordChecklist = memo(function PasswordChecklist({ password }) {
           </Fade>
         </Stack>
 
-        {/* Rules — 2 columns */}
+        {/* Rules — 2 columns (จอ xs คอลัมน์เดียว) */}
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
             columnGap: 1.5,
             rowGap: 0.75,
           }}
@@ -315,6 +326,8 @@ const AddUserDialog = memo(function AddUserDialog({
   onSubmit,
 }) {
   const theme = useTheme();
+  // จอ xs: เปิดเต็มจอ ฟอร์มหลายช่องไม่ถูกบีบ และปุ่มยืนยันไม่ตกขอบจอ
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const radius = theme.shape.borderRadius;
 
   const [form, setForm] = useState(emptyForm);
@@ -377,9 +390,16 @@ const AddUserDialog = memo(function AddUserDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="xs"
-      slotProps={{ paper: { sx: { borderRadius: `${radius + 4}px` } } }}
+      fullScreen={fullScreen}
+      slotProps={{
+        paper: { sx: { borderRadius: fullScreen ? 0 : `${radius + 4}px` } },
+      }}
     >
-      <form onSubmit={handleSubmit}>
+      {/* flex column: Dialog เต็มจอแล้ว DialogContent เลื่อนได้ ปุ่มอยู่ล่างสุด */}
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
+      >
         <DialogTitle sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
           เพิ่มผู้ใช้งานใหม่
         </DialogTitle>
@@ -567,6 +587,8 @@ const ResetPasswordDialog = memo(function ResetPasswordDialog({
   onSubmit,
 }) {
   const theme = useTheme();
+  // จอ xs: เปิดเต็มจอ ฟอร์มหลายช่องไม่ถูกบีบ และปุ่มยืนยันไม่ตกขอบจอ
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   // ใช้สี primary เป็น accent เพราะการตั้งรหัสผ่านใหม่ไม่ใช่ action ที่ทำลาย/เสี่ยง
   // เหมือน delete หรือ deactivate — ไม่จำเป็นต้องใช้โทน warning/error
@@ -623,9 +645,16 @@ const ResetPasswordDialog = memo(function ResetPasswordDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="xs"
-      slotProps={{ paper: { sx: { borderRadius: 3, overflow: "hidden" } } }}
+      fullScreen={fullScreen}
+      slotProps={{
+        paper: { sx: { borderRadius: fullScreen ? 0 : 3, overflow: "hidden" } },
+      }}
     >
-      <form onSubmit={handleSubmit}>
+      {/* flex column: Dialog เต็มจอแล้ว DialogContent เลื่อนได้ ปุ่มอยู่ล่างสุด */}
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
+      >
         {/* ===== Title: icon badge วงกลม + ข้อความ — เหมือน ConfirmDialog =====
             หมายเหตุ: DialogTitle ของ MUI ครอบ children ด้วย
             <Typography variant="h6" component="h2"> ให้อัตโนมัติอยู่แล้ว
@@ -778,6 +807,8 @@ const BulkActionDialog = memo(function BulkActionDialog({
   onConfirm,
 }) {
   const theme = useTheme();
+  // จอ xs: เปิดเต็มจอ ฟอร์มหลายช่องไม่ถูกบีบ และปุ่มยืนยันไม่ตกขอบจอ
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const radius = theme.shape.borderRadius;
   const { text, divider, background } = theme.palette;
 
@@ -823,7 +854,8 @@ const BulkActionDialog = memo(function BulkActionDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="xs"
-      PaperProps={{ sx: { borderRadius: `${radius + 4}px` } }}
+      fullScreen={fullScreen}
+      PaperProps={{ sx: { borderRadius: fullScreen ? 0 : `${radius + 4}px` } }}
     >
       <DialogTitle sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
         {bulkAction ? BULK_ACTION_LABELS[bulkAction.type].title : ""}
@@ -1343,6 +1375,313 @@ function SortableHeaderCell({ field, label, orderBy, order, onSort }) {
     </TableCell>
   );
 }
+/* ============================================================================
+ * ส่วนย่อยของผู้ใช้ 1 ราย — ใช้ร่วมกันระหว่างแถวตาราง (จอ md ขึ้นไป) และการ์ด (จอเล็ก)
+ * ==========================================================================*/
+function UserIdentity({ user: u, isSelf }) {
+  const { text } = useTheme().palette;
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography
+        component="div"
+        sx={{
+          fontSize: 13.5,
+          fontWeight: isSelf ? 600 : 500,
+          color: text.head,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: 1.4,
+        }}
+      >
+        {u.full_name || "-"}
+        {isSelf && (
+          <Chip
+            label="คุณ"
+            size="small"
+            color="primary"
+            variant="outlined"
+            sx={{
+              ml: 0.75,
+              height: 20,
+              fontSize: 11,
+              fontWeight: 400,
+              borderRadius: 999,
+              "& .MuiChip-label": { px: 1 },
+            }}
+          />
+        )}
+      </Typography>
+      <Typography
+        sx={{
+          fontSize: 12,
+          color: text.secondary,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: 1.4,
+        }}
+      >
+        {u.email}
+      </Typography>
+    </Box>
+  );
+}
+
+function RoleSelect({ user: u, isRowActionLocked, onChangeRole, sx }) {
+  return (
+    <Tooltip
+      placement="top"
+      title={isRowActionLocked ? BULK_MODE_LOCK_HINT : ""}
+      arrow
+      disableHoverListener={!isRowActionLocked}
+    >
+      <span>
+        <FormControl
+          size="small"
+          sx={{ minWidth: 110, ...sx }}
+          disabled={isRowActionLocked}
+        >
+          <Select
+            inputProps={{ "aria-label": "สิทธิ์ผู้ใช้งาน" }}
+            value={u.role_name}
+            onChange={(e) => onChangeRole(u.user_id, e.target.value)}
+            sx={{
+              fontSize: 13,
+              borderRadius: 2,
+              "&.Mui-disabled": {
+                color: "#acacac",
+                WebkitTextFillColor: "#acacac",
+              },
+              "& .MuiSvgIcon-root.Mui-disabled": { color: "#acacac" },
+            }}
+          >
+            <MenuItem value="user">User</MenuItem>
+            <MenuItem value="admin">Admin</MenuItem>
+          </Select>
+        </FormControl>
+      </span>
+    </Tooltip>
+  );
+}
+
+function StatusChip({
+  user: u,
+  isRowActionLocked,
+  onRequestApprove,
+  onRequestToggleStatus,
+}) {
+  const radius = useTheme().shape.borderRadius;
+  if (!u.is_approved) {
+    return (
+      <Chip
+        size="small"
+        icon={<HourglassTopRoundedIcon sx={{ fontSize: 14 }} />}
+        label="รอการอนุมัติ"
+        color="warning"
+        onClick={() => onRequestApprove(u)}
+        sx={{
+          cursor: "pointer",
+          fontSize: 11.5,
+          fontWeight: 400,
+          borderRadius: `${radius}px`,
+        }}
+      />
+    );
+  }
+  return (
+    <Tooltip
+      placement="top"
+      title={isRowActionLocked ? BULK_MODE_LOCK_HINT : ""}
+      arrow
+      disableHoverListener={!isRowActionLocked}
+    >
+      <span>
+        <Chip
+          size="small"
+          icon={
+            u.is_active ? (
+              <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />
+            ) : (
+              <BlockRoundedIcon sx={{ fontSize: 14 }} />
+            )
+          }
+          label={u.is_active ? "ใช้งานได้" : "ระงับการใช้งาน"}
+          color={u.is_active ? "success" : "default"}
+          variant={u.is_active ? "outlined" : "filled"}
+          onClick={() => onRequestToggleStatus(u)}
+          disabled={isRowActionLocked}
+          sx={{
+            cursor: isRowActionLocked ? "not-allowed" : "pointer",
+            fontSize: 11.5,
+            fontWeight: 400,
+            borderRadius: `${radius}px`,
+            "&.Mui-disabled": {
+              opacity: 1,
+              color: "#acacac",
+              borderColor: "#acacac",
+              "& .MuiChip-icon": { color: "#acacac" },
+            },
+          }}
+        />
+      </span>
+    </Tooltip>
+  );
+}
+
+function formatLastLogin(u) {
+  return u.last_login_at
+    ? new Date(u.last_login_at).toLocaleString("th-TH")
+    : "-";
+}
+
+function RowActions({
+  user: u,
+  isRowActionLocked,
+  onRequestApprove,
+  onRequestResetPassword,
+  onRequestDelete,
+}) {
+  const theme = useTheme();
+  return (
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{
+        justifyContent: "flex-start",
+        p: 0.5,
+        width: "fit-content",
+        borderRadius: 2.5,
+        bgcolor: alpha(theme.palette.grey[500], 0.04),
+        border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+      }}
+    >
+      {!u.is_approved && (
+        <>
+          <Tooltip title="อนุมัติผู้ใช้งาน" arrow>
+            <IconButton
+              size="small"
+              onClick={() => onRequestApprove(u)}
+              aria-label="อนุมัติผู้ใช้งาน"
+              sx={{
+                width: 34,
+                height: 34,
+                borderRadius: 2,
+                color: "text.secondary",
+                transition: "all .18s ease",
+                "& svg": { fontSize: 17 },
+                "&:hover": {
+                  color: "success.main",
+                  bgcolor: alpha(theme.palette.success.main, 0.1),
+                  transform: "translateY(-1px)",
+                  boxShadow: 1,
+                },
+              }}
+            >
+              <HowToRegRoundedIcon />
+            </IconButton>
+          </Tooltip>
+          <Divider orientation="vertical" flexItem />
+        </>
+      )}
+
+      <Tooltip
+        placement="left"
+        title={isRowActionLocked ? BULK_MODE_LOCK_HINT : "ตั้งรหัสผ่านใหม่"}
+        slotProps={{
+          tooltip: {
+            sx: {
+              bgcolor: theme.palette.primary.main,
+              borderRadius: 50,
+              fontWeight: 400,
+            },
+          },
+        }}
+      >
+        <span>
+          <IconButton
+            size="small"
+            disabled={isRowActionLocked}
+            onClick={() => onRequestResetPassword(u)}
+            aria-label="ตั้งรหัสผ่านใหม่"
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              color: "text.secondary",
+              transition: "all .18s ease",
+              "& svg": { fontSize: 17 },
+              "&.Mui-disabled": { color: "#acacac" },
+              "&:hover": isRowActionLocked
+                ? {}
+                : {
+                    color: "primary.main",
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    transform: "translateY(-1px)",
+                    boxShadow: 1,
+                  },
+            }}
+          >
+            <LockResetRoundedIcon />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Tooltip
+        placement="top"
+        title={isRowActionLocked ? BULK_MODE_LOCK_HINT : ""}
+        arrow
+        disableHoverListener={!isRowActionLocked}
+      >
+        <span>
+          <Button
+            size="small"
+            variant="text"
+            startIcon={<DeleteRoundedIcon sx={{ fontSize: 17 }} />}
+            onClick={() => onRequestDelete(u)}
+            disabled={isRowActionLocked}
+            sx={{
+              minWidth: "auto",
+              px: 1.2,
+              py: 0.6,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 400,
+              fontSize: 13,
+              color: isRowActionLocked ? "action.disabled" : "error.main",
+              transition: "all .18s ease",
+              "&:hover": !isRowActionLocked
+                ? {
+                    color: "error.main",
+                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                    transform: "translateY(-1px)",
+                    boxShadow: 1,
+                  }
+                : {},
+            }}
+          >
+            ลบผู้ใช้งาน
+          </Button>
+        </span>
+      </Tooltip>
+    </Stack>
+  );
+}
+
+function RowCheckbox({ user: u, isSelf, isSelected, onToggleSelect }) {
+  return (
+    <Tooltip placement="top" arrow disableHoverListener={!isSelf}>
+      <span>
+        <Checkbox
+          size="small"
+          checked={isSelected}
+          onChange={() => onToggleSelect(u.user_id)}
+          disabled={isSelf}
+          inputProps={{ "aria-label": `เลือก ${u.email}` }}
+          sx={{ "&.Mui-disabled": { color: "#acacac" } }}
+        />
+      </span>
+    </Tooltip>
+  );
+}
 
 /* ============================================================================
  * UserRow — memoized ต่อแถว: toggle checkbox 1 แถว จะไม่ทำให้แถวอื่น re-render
@@ -1362,7 +1701,6 @@ const UserRow = memo(function UserRow({
 }) {
   const theme = useTheme();
   const { primary, text } = theme.palette;
-  const radius = theme.shape.borderRadius;
   const u = user;
 
   return (
@@ -1392,282 +1730,134 @@ const UserRow = memo(function UserRow({
       }}
     >
       <TableCell padding="checkbox">
-        <Tooltip placement="top" arrow disableHoverListener={!isSelf}>
-          <span>
-            <Checkbox
-              size="small"
-              checked={isSelected}
-              onChange={() => onToggleSelect(u.user_id)}
-              disabled={isSelf}
-              sx={{ "&.Mui-disabled": { color: "#acacac" } }}
-            />
-          </span>
-        </Tooltip>
+        <RowCheckbox
+          user={u}
+          isSelf={isSelf}
+          isSelected={isSelected}
+          onToggleSelect={onToggleSelect}
+        />
       </TableCell>
 
       <TableCell sx={{ maxWidth: { xs: 220, md: "none" } }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            component="div"
-            sx={{
-              fontSize: 13.5,
-              fontWeight: isSelf ? 600 : 500,
-              color: text.head,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              lineHeight: 1.4,
-            }}
-          >
-            {u.full_name || "-"}
-            {isSelf && (
-              <Chip
-                label="คุณ"
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{
-                  ml: 0.75,
-                  height: 20,
-                  fontSize: 11,
-                  fontWeight: 400,
-                  borderRadius: 999,
-                  "& .MuiChip-label": { px: 1 },
-                }}
-              />
-            )}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 12,
-              color: text.secondary,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              lineHeight: 1.4,
-            }}
-          >
-            {u.email}
-          </Typography>
-        </Box>
+        <UserIdentity user={u} isSelf={isSelf} />
       </TableCell>
 
       <TableCell>
-        <Tooltip
-          placement="top"
-          title={isRowActionLocked ? BULK_MODE_LOCK_HINT : ""}
-          arrow
-          disableHoverListener={!isRowActionLocked}
-        >
-          <span>
-            <FormControl
-              size="small"
-              sx={{ minWidth: 110, mx:2 }}
-              disabled={isRowActionLocked}
-            >
-              <Select
-                inputProps={{ "aria-label": "สิทธิ์ผู้ใช้งาน" }}
-                value={u.role_name}
-                onChange={(e) => onChangeRole(u.user_id, e.target.value)}
-                sx={{
-                  fontSize: 13,
-                  borderRadius: 2,
-                  "&.Mui-disabled": {
-                    color: "#acacac",
-                    WebkitTextFillColor: "#acacac",
-                  },
-                  "& .MuiSvgIcon-root.Mui-disabled": { color: "#acacac" },
-                }}
-              >
-                <MenuItem value="user">User</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-              </Select>
-            </FormControl>
-          </span>
-        </Tooltip>
+        <RoleSelect
+          user={u}
+          isRowActionLocked={isRowActionLocked}
+          onChangeRole={onChangeRole}
+          sx={{ mx: 2 }}
+        />
       </TableCell>
 
       <TableCell>
-        {!u.is_approved ? (
-          <Chip
-            size="small"
-            icon={<HourglassTopRoundedIcon sx={{ fontSize: 14 }} />}
-            label="รอการอนุมัติ"
-            color="warning"
-            onClick={() => onRequestApprove(u)}
-            sx={{
-              cursor: "pointer",
-              fontSize: 11.5,
-              fontWeight: 400,
-              borderRadius: `${radius}px`,
-            }}
-          />
-        ) : (
-          <Tooltip
-            placement="top"
-            title={isRowActionLocked ? BULK_MODE_LOCK_HINT : ""}
-            arrow
-            disableHoverListener={!isRowActionLocked}
-          >
-            <span>
-              <Chip
-                size="small"
-                icon={
-                  u.is_active ? (
-                    <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />
-                  ) : (
-                    <BlockRoundedIcon sx={{ fontSize: 14 }} />
-                  )
-                }
-                label={u.is_active ? "ใช้งานได้" : "ระงับการใช้งาน"}
-                color={u.is_active ? "success" : "default"}
-                variant={u.is_active ? "outlined" : "filled"}
-                onClick={() => onRequestToggleStatus(u)}
-                disabled={isRowActionLocked}
-                sx={{
-                  cursor: isRowActionLocked ? "not-allowed" : "pointer",
-                  fontSize: 11.5,
-                  fontWeight: 400,
-                  borderRadius: `${radius}px`,
-                  "&.Mui-disabled": {
-                    opacity: 1,
-                    color: "#acacac",
-                    borderColor: "#acacac",
-                    "& .MuiChip-icon": { color: "#acacac" },
-                  },
-                }}
-              />
-            </span>
-          </Tooltip>
-        )}
+        <StatusChip
+          user={u}
+          isRowActionLocked={isRowActionLocked}
+          onRequestApprove={onRequestApprove}
+          onRequestToggleStatus={onRequestToggleStatus}
+        />
       </TableCell>
 
       <TableCell sx={{ fontSize: 12.5, color: text.secondary }}>
-        {u.last_login_at
-          ? new Date(u.last_login_at).toLocaleString("th-TH")
-          : "-"}
+        {formatLastLogin(u)}
       </TableCell>
 
       <TableCell align="left">
-        <Stack
-          direction="row"
-          spacing={0.5}
-          sx={{
-            justifyContent: "flex-start",
-            p: 0.5,
-            width: "fit-content",
-            borderRadius: 2.5,
-            bgcolor: alpha(theme.palette.grey[500], 0.04),
-            border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-          }}
-        >
-          {!u.is_approved && (
-            <>
-              <Tooltip title="อนุมัติผู้ใช้งาน" arrow>
-                <IconButton
-                  size="small"
-                  onClick={() => onRequestApprove(u)}
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 2,
-                    color: "text.secondary",
-                    transition: "all .18s ease",
-                    "& svg": { fontSize: 17 },
-                    "&:hover": {
-                      color: "success.main",
-                      bgcolor: alpha(theme.palette.success.main, 0.1),
-                      transform: "translateY(-1px)",
-                      boxShadow: 1,
-                    },
-                  }}
-                >
-                  <HowToRegRoundedIcon />
-                </IconButton>
-              </Tooltip>
-              <Divider orientation="vertical" flexItem />
-            </>
-          )}
-
-          <Tooltip
-            placement="left"
-            title={isRowActionLocked ? BULK_MODE_LOCK_HINT : "ตั้งรหัสผ่านใหม่"}
-            slotProps={{
-              tooltip: {
-                sx: {
-                  bgcolor: theme.palette.primary.main,
-                  borderRadius: 50,
-                  fontWeight: 400,
-                },
-              },
-            }}
-          >
-            <span>
-              <IconButton
-                size="small"
-                disabled={isRowActionLocked}
-                onClick={() => onRequestResetPassword(u)}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 2,
-                  color: "text.secondary",
-                  transition: "all .18s ease",
-                  "& svg": { fontSize: 17 },
-                  "&.Mui-disabled": { color: "#acacac" },
-                  "&:hover": isRowActionLocked
-                    ? {}
-                    : {
-                        color: "primary.main",
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        transform: "translateY(-1px)",
-                        boxShadow: 1,
-                      },
-                }}
-              >
-                <LockResetRoundedIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Tooltip
-            placement="top"
-            title={isRowActionLocked ? BULK_MODE_LOCK_HINT : ""}
-            arrow
-            disableHoverListener={!isRowActionLocked}
-          >
-            <span>
-              <Button
-                size="small"
-                variant="text"
-                startIcon={<DeleteRoundedIcon sx={{ fontSize: 17 }} />}
-                onClick={() => onRequestDelete(u)}
-                disabled={isRowActionLocked}
-                sx={{
-                  minWidth: "auto",
-                  px: 1.2,
-                  py: 0.6,
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 400,
-                  fontSize: 13,
-                  color: isRowActionLocked ? "action.disabled" : "error.main",
-                  transition: "all .18s ease",
-                  "&:hover": !isRowActionLocked
-                    ? {
-                        color: "error.main",
-                        bgcolor: alpha(theme.palette.error.main, 0.1),
-                        transform: "translateY(-1px)",
-                        boxShadow: 1,
-                      }
-                    : {},
-                }}
-              >
-                ลบผู้ใช้งาน
-              </Button>
-            </span>
-          </Tooltip>
-        </Stack>
+        <RowActions
+          user={u}
+          isRowActionLocked={isRowActionLocked}
+          onRequestApprove={onRequestApprove}
+          onRequestResetPassword={onRequestResetPassword}
+          onRequestDelete={onRequestDelete}
+        />
       </TableCell>
     </TableRow>
+  );
+});
+
+/* ============================================================================
+ * UserCard — ผู้ใช้ 1 รายแบบการ์ด สำหรับจอเล็ก (< md) แทนแถวตารางที่ต้องเลื่อนแนวนอน
+ * ==========================================================================*/
+const UserCard = memo(function UserCard({
+  user,
+  isSelf,
+  isSelected,
+  isRowActionLocked,
+  onToggleSelect,
+  onChangeRole,
+  onRequestApprove,
+  onRequestToggleStatus,
+  onRequestResetPassword,
+  onRequestDelete,
+}) {
+  const theme = useTheme();
+  const { primary, text, divider } = theme.palette;
+  const u = user;
+
+  return (
+    <Box
+      sx={{
+        px: 1.5,
+        py: 1.25,
+        borderTop: `1px solid ${divider}`,
+        ...(isSelf && { boxShadow: `inset 3px 0 0 ${primary.main}` }),
+        bgcolor: isSelected
+          ? alpha(primary.main, 0.08)
+          : isSelf
+            ? alpha(primary.main, 0.045)
+            : "transparent",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.5 }}>
+        <Box sx={{ ml: -0.75, mt: -0.5 }}>
+          <RowCheckbox
+            user={u}
+            isSelf={isSelf}
+            isSelected={isSelected}
+            onToggleSelect={onToggleSelect}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <UserIdentity user={u} isSelf={isSelf} />
+          <Typography sx={{ fontSize: 11.5, color: text.secondary, mt: 0.25 }}>
+            เข้าใช้งานล่าสุด {formatLastLogin(u)}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1,
+          mt: 1,
+        }}
+      >
+        <RoleSelect
+          user={u}
+          isRowActionLocked={isRowActionLocked}
+          onChangeRole={onChangeRole}
+        />
+        <StatusChip
+          user={u}
+          isRowActionLocked={isRowActionLocked}
+          onRequestApprove={onRequestApprove}
+          onRequestToggleStatus={onRequestToggleStatus}
+        />
+        <Box sx={{ ml: "auto" }}>
+          <RowActions
+            user={u}
+            isRowActionLocked={isRowActionLocked}
+            onRequestApprove={onRequestApprove}
+            onRequestResetPassword={onRequestResetPassword}
+            onRequestDelete={onRequestDelete}
+          />
+        </Box>
+      </Box>
+    </Box>
   );
 });
 
@@ -1711,6 +1901,9 @@ const UsersTable = memo(function UsersTable({
     };
   }, [background.paper, primary.main, text.primary]);
 
+  // จอเล็ก (< md): ตาราง 6 คอลัมน์ต้องเลื่อนแนวนอน — แสดงเป็นรายการการ์ดแทน
+  const isCompact = useMediaQuery(theme.breakpoints.down("md"));
+
   return (
     <Box
       sx={{
@@ -1722,130 +1915,207 @@ const UsersTable = memo(function UsersTable({
         boxShadow: `0 1px 2px ${alpha("#000", 0.04)}`,
       }}
     >
-      <TableContainer
-        sx={{
-          width: "100%",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          "&::-webkit-scrollbar": { height: 8 },
-          "&::-webkit-scrollbar-thumb": {
-            borderRadius: 8,
-            bgcolor: alpha(text.secondary, 0.25),
-          },
-        }}
-      >
-        <Table
-          size="small"
+      {isCompact ? (
+        <>
+          {/* หัวรายการ: เลือกทั้งหมด + เรียงลำดับ (แทนหัวตารางที่กดเรียงได้) */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 1.5,
+              py: 0.75,
+              bgcolor: background.default,
+            }}
+          >
+            <Checkbox
+              size="small"
+              checked={allSelected}
+              indeterminate={someSelected}
+              onChange={onToggleSelectAll}
+              disabled={selectableIds.length === 0}
+              inputProps={{ "aria-label": "เลือกทั้งหมด" }}
+              sx={{ ml: -0.75, "&.Mui-disabled": { color: "#acacac" } }}
+            />
+            <Typography sx={{ fontSize: 13, color: text.secondary, flex: 1 }}>
+              เลือกทั้งหมด
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <Select
+                value={orderBy}
+                onChange={(e) => onSort(e.target.value)}
+                inputProps={{ "aria-label": "เรียงตาม" }}
+                sx={{ fontSize: 13, borderRadius: 2, bgcolor: background.paper }}
+              >
+                {SORT_FIELDS.map((s) => (
+                  <MenuItem key={s.field} value={s.field}>
+                    {s.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Tooltip title={order === "asc" ? "น้อยไปมาก" : "มากไปน้อย"}>
+              <IconButton
+                size="small"
+                onClick={() => onSort(orderBy)}
+                aria-label="สลับลำดับการเรียง"
+                sx={{ width: 36, height: 36 }}
+              >
+                {order === "asc" ? (
+                  <ArrowUpwardRoundedIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <ArrowDownwardRoundedIcon sx={{ fontSize: 18 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {!loading &&
+            users.map((u) => {
+              const isSelf = u.user_id === currentUserId;
+              return (
+                <UserCard
+                  key={u.user_id}
+                  user={u}
+                  isSelf={isSelf}
+                  isSelected={selectedIds.has(u.user_id)}
+                  isRowActionLocked={isSelf || selectedCount > 0}
+                  onToggleSelect={onToggleSelectRow}
+                  onChangeRole={onChangeRole}
+                  onRequestApprove={onRequestApprove}
+                  onRequestToggleStatus={onRequestToggleStatus}
+                  onRequestResetPassword={onRequestResetPassword}
+                  onRequestDelete={onRequestDelete}
+                />
+              );
+            })}
+        </>
+      ) : (
+        <TableContainer
           sx={{
-            minWidth: 900,
-            "& th, & td": { whiteSpace: "nowrap" },
-            "& tbody tr": { transition: "background-color 120ms ease" },
-            "& th:first-of-type, & td:first-of-type": {
-              position: "sticky",
-              left: 0,
-              zIndex: 3,
-              backgroundColor: background.paper,
-            },
-            "& thead th:first-of-type": {
-              backgroundColor: background.default,
-              zIndex: 4,
-            },
-            "& th:last-of-type, & td:last-of-type": {
-              position: "sticky",
-              right: 0,
-              zIndex: 3,
-              backgroundColor: background.paper,
-              boxShadow: `-6px 0 6px -6px ${alpha(primary.main, 0.25)}`,
-            },
-            "& thead th:last-of-type": {
-              backgroundColor: background.default,
-              zIndex: 4,
+            width: "100%",
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
+            "&::-webkit-scrollbar": { height: 8 },
+            "&::-webkit-scrollbar-thumb": {
+              borderRadius: 8,
+              bgcolor: alpha(text.secondary, 0.25),
             },
           }}
         >
-          <TableHead>
-            <TableRow
-              sx={{
-                "& th": {
-                  fontWeight: 400,
-                  fontSize: 13,
-                  color: text.secondary,
-                  bgcolor: background.default,
-                  borderBottom: `1px solid ${divider}`,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.03em",
-                },
-              }}
-            >
-              <TableCell padding="checkbox">
-                <Checkbox
-                  size="small"
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onChange={onToggleSelectAll}
-                  disabled={selectableIds.length === 0}
-                  sx={{ "&.Mui-disabled": { color: "#acacac" } }}
-                />
-              </TableCell>
-
-              <SortableHeaderCell
-                field="email"
-                label="ผู้ใช้งาน"
-                orderBy={orderBy}
-                order={order}
-                onSort={onSort}
-              />
-              <SortableHeaderCell
-                field="role_name"
-                label="สิทธิ์"
-                orderBy={orderBy}
-                order={order}
-                onSort={onSort}
-              />
-              <SortableHeaderCell
-                field="status"
-                label="สถานะ"
-                orderBy={orderBy}
-                order={order}
-                onSort={onSort}
-              />
-              <SortableHeaderCell
-                field="last_login_at"
-                label="เข้าใช้งานล่าสุด"
-                orderBy={orderBy}
-                order={order}
-                onSort={onSort}
-              />
-
-              <TableCell align="left">การจัดการ</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {!loading &&
-              users.map((u) => {
-                const isSelf = u.user_id === currentUserId;
-                const isRowActionLocked = isSelf || selectedCount > 0;
-                return (
-                  <UserRow
-                    key={u.user_id}
-                    user={u}
-                    isSelf={isSelf}
-                    isSelected={selectedIds.has(u.user_id)}
-                    isRowActionLocked={isRowActionLocked}
-                    stickyColors={stickyColors}
-                    onToggleSelect={onToggleSelectRow}
-                    onChangeRole={onChangeRole}
-                    onRequestApprove={onRequestApprove}
-                    onRequestToggleStatus={onRequestToggleStatus}
-                    onRequestResetPassword={onRequestResetPassword}
-                    onRequestDelete={onRequestDelete}
+          <Table
+            size="small"
+            sx={{
+              minWidth: 900,
+              "& th, & td": { whiteSpace: "nowrap" },
+              "& tbody tr": { transition: "background-color 120ms ease" },
+              "& th:first-of-type, & td:first-of-type": {
+                position: "sticky",
+                left: 0,
+                zIndex: 3,
+                backgroundColor: background.paper,
+              },
+              "& thead th:first-of-type": {
+                backgroundColor: background.default,
+                zIndex: 4,
+              },
+              "& th:last-of-type, & td:last-of-type": {
+                position: "sticky",
+                right: 0,
+                zIndex: 3,
+                backgroundColor: background.paper,
+                boxShadow: `-6px 0 6px -6px ${alpha(primary.main, 0.25)}`,
+              },
+              "& thead th:last-of-type": {
+                backgroundColor: background.default,
+                zIndex: 4,
+              },
+            }}
+          >
+            <TableHead>
+              <TableRow
+                sx={{
+                  "& th": {
+                    fontWeight: 400,
+                    fontSize: 13,
+                    color: text.secondary,
+                    bgcolor: background.default,
+                    borderBottom: `1px solid ${divider}`,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.03em",
+                  },
+                }}
+              >
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    size="small"
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={onToggleSelectAll}
+                    disabled={selectableIds.length === 0}
+                    sx={{ "&.Mui-disabled": { color: "#acacac" } }}
                   />
-                );
-              })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                </TableCell>
+
+                <SortableHeaderCell
+                  field="email"
+                  label="ผู้ใช้งาน"
+                  orderBy={orderBy}
+                  order={order}
+                  onSort={onSort}
+                />
+                <SortableHeaderCell
+                  field="role_name"
+                  label="สิทธิ์"
+                  orderBy={orderBy}
+                  order={order}
+                  onSort={onSort}
+                />
+                <SortableHeaderCell
+                  field="status"
+                  label="สถานะ"
+                  orderBy={orderBy}
+                  order={order}
+                  onSort={onSort}
+                />
+                <SortableHeaderCell
+                  field="last_login_at"
+                  label="เข้าใช้งานล่าสุด"
+                  orderBy={orderBy}
+                  order={order}
+                  onSort={onSort}
+                />
+
+                <TableCell align="left">การจัดการ</TableCell>
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {!loading &&
+                users.map((u) => {
+                  const isSelf = u.user_id === currentUserId;
+                  const isRowActionLocked = isSelf || selectedCount > 0;
+                  return (
+                    <UserRow
+                      key={u.user_id}
+                      user={u}
+                      isSelf={isSelf}
+                      isSelected={selectedIds.has(u.user_id)}
+                      isRowActionLocked={isRowActionLocked}
+                      stickyColors={stickyColors}
+                      onToggleSelect={onToggleSelectRow}
+                      onChangeRole={onChangeRole}
+                      onRequestApprove={onRequestApprove}
+                      onRequestToggleStatus={onRequestToggleStatus}
+                      onRequestResetPassword={onRequestResetPassword}
+                      onRequestDelete={onRequestDelete}
+                    />
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {loading && (
         <Box
@@ -2226,12 +2496,15 @@ export default function UserManagementSection() {
   return (
     <Box>
       {/* ===== Header ===== */}
+      {/* จอ xs: ปุ่มเพิ่มผู้ใช้งานลงไปอยู่ใต้ชื่อหน้า เต็มความกว้าง */}
       <Stack
         sx={{
           mb: 2,
           display: "flex",
-          flexDirection: "row",
+          flexDirection: { xs: "column", sm: "row" },
           justifyContent: "space-between",
+          alignItems: { xs: "stretch", sm: "flex-start" },
+          gap: { xs: 1, sm: 2 },
         }}
       >
         <Box sx={{ minWidth: 0, py: 1.5 }}>

@@ -91,6 +91,23 @@ export default function HeatmapChartCard({
         data: heatmap.data,
       },
     ],
+    // การ์ดแคบ (มือถือ): ย้าย legend ลงใต้กราฟ คืนความกว้างให้ 24 ช่องชั่วโมง
+    // และแสดงป้ายชั่วโมงทุก 3 ชม. ไม่ให้ตัวอักษรเบียดกัน
+    responsive: {
+      rules: [
+        {
+          condition: { maxWidth: 420 },
+          chartOptions: {
+            legend: {
+              align: "center",
+              layout: "horizontal",
+              verticalAlign: "bottom",
+            },
+            xAxis: { labels: { step: 3 } },
+          },
+        },
+      ],
+    },
   };
 
   return (

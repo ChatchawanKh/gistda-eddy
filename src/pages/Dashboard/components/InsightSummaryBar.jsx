@@ -206,17 +206,20 @@ function FooterChip({ icon: Icon, color, strong, text }) {
   );
 }
 
-function KpiCard({ label, suffix, value, footer, spark, span }) {
+// span = จำนวนช่องในกริด 6 คอลัมน์ (sm ขึ้นไป), xsSpan = ในกริด 2 คอลัมน์ของจอ xs
+// การ์ดครึ่งแถวบนจอ xs ซ่อน sparkline ไว้ ให้ตัวเลขมีที่พอ
+function KpiCard({ label, suffix, value, footer, spark, span, xsSpan = 2 }) {
   const theme = useTheme();
   const { text } = theme.palette;
+  const compactOnXs = xsSpan === 1;
   return (
     <Box
       sx={{
         ...theme.custom.card,
-        gridColumn: `span ${span}`,
+        gridColumn: { xs: `span ${xsSpan}`, sm: `span ${span}` },
         minWidth: 0,
-        px: 2.25,
-        py: 2,
+        px: { xs: 1.5, sm: 2.25 },
+        py: { xs: 1.5, sm: 2 },
         display: "flex",
         flexDirection: "column",
         gap: 1.25,
@@ -245,7 +248,7 @@ function KpiCard({ label, suffix, value, footer, spark, span }) {
         <Box sx={{ flexShrink: 0, minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: 26,
+              fontSize: { xs: 22, sm: 26 },
               fontWeight: 600,
               lineHeight: 1.15,
               color: text.primary,
@@ -256,7 +259,17 @@ function KpiCard({ label, suffix, value, footer, spark, span }) {
             {value}
           </Typography>
         </Box>
-        <Box sx={{ flex: 1, minWidth: 48, maxWidth: 140, ml: "auto" }}>{spark}</Box>
+        <Box
+          sx={{
+            display: compactOnXs ? { xs: "none", sm: "block" } : "block",
+            flex: 1,
+            minWidth: 48,
+            maxWidth: 140,
+            ml: "auto",
+          }}
+        >
+          {spark}
+        </Box>
       </Box>
 
       {footer}
@@ -312,13 +325,18 @@ export default function InsightSummaryBar({
   const minRow = numericRows[argMin(values)];
 
   // grid 6 คอลัมน์: แถวบน 2 การ์ด (ใบละ 3 ช่อง) แถวล่าง 3 การ์ด (ใบละ 2 ช่อง)
+  // จอ xs: grid 2 คอลัมน์ — จำนวนข้อมูล/แนวโน้มเต็มแถว, เฉลี่ย+สูงสุดครึ่งแถว, ต่ำสุดเต็มแถว
+  const XS_SPANS = [2, 2, 1, 1, 2];
   return (
     <Box>
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-          gap: 1.5,
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            sm: "repeat(6, minmax(0, 1fr))",
+          },
+          gap: { xs: 1, sm: 1.5 },
         }}
       >
         {loading ? (
@@ -329,7 +347,10 @@ export default function InsightSummaryBar({
               height={118}
               sx={{
                 borderRadius: `${radius}px`,
-                gridColumn: i < 2 ? "span 3" : "span 2",
+                gridColumn: {
+                  xs: `span ${XS_SPANS[i]}`,
+                  sm: i < 2 ? "span 3" : "span 2",
+                },
               }}
             />
           ))
@@ -384,6 +405,7 @@ export default function InsightSummaryBar({
             />
             <KpiCard
               span={2}
+              xsSpan={XS_SPANS[2]}
               label="ค่าเฉลี่ย"
               suffix={unit}
               value={fmt(summary.avg)}
@@ -392,6 +414,7 @@ export default function InsightSummaryBar({
             />
             <KpiCard
               span={2}
+              xsSpan={XS_SPANS[3]}
               label="ค่าสูงสุด"
               suffix={unit}
               value={fmt(summary.max)}

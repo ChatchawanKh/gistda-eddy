@@ -184,6 +184,15 @@ export default function WindRoseChart({ speedDatastream, directionDatastream, fr
       data,
       color: BIN_COLORS[i % BIN_COLORS.length],
     })),
+    // การ์ดแคบ (มือถือ): วงกลมเล็กลงตามความกว้าง ลดความสูงไม่ให้เหลือที่ว่างบน-ล่าง
+    responsive: {
+      rules: [
+        {
+          condition: { maxWidth: 420 },
+          chartOptions: { chart: { height: 300 } },
+        },
+      ],
+    },
   };
 
   return (

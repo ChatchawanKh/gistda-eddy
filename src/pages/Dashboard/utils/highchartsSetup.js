@@ -54,7 +54,16 @@ const MENU_COLORS = {
 // จัดสไตล์ปุ่ม context menu (ไอคอนแฮมเบอร์เกอร์) + เมนู dropdown ที่กดแล้ว
 // เปิดขึ้นมา ให้เข้าธีมของแอป แทนหน้าตา default ของ Highcharts (สี่เหลี่ยม
 // ดำทึบ มุมเหลี่ยม) ใช้ Highcharts.setOptions ตั้งครั้งเดียวให้ทุกกราฟทั่วแอป
+
+// จอสัมผัส: tooltip.followTouchMove (default true) ทำให้ Highcharts preventDefault
+// ทุกครั้งที่นิ้วแตะในพื้นที่กราฟ ผู้ใช้เลื่อนหน้าผ่านกราฟไม่ได้ (หน้า Dashboard มีกราฟ
+// เรียงยาว) — ปิดไว้ ให้นิ้วเดียวเลื่อนหน้า แตะเพื่อดู tooltip และสองนิ้วเพื่อซูม
+const IS_TOUCH =
+  typeof window !== "undefined" &&
+  Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+
 Highcharts.setOptions({
+  tooltip: { followTouchMove: !IS_TOUCH },
   lang: {
     contextButtonTitle: "ตัวเลือกเพิ่มเติม",
     downloadPNG: "ดาวน์โหลดรูปภาพ (PNG)",

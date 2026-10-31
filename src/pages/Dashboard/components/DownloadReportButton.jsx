@@ -40,7 +40,8 @@ const FORMATS = {
   },
 };
 
-export default function DownloadReportButton({ thing, from, to }) {
+// fullWidth = เต็มความกว้างกล่องแม่ (ใช้ใน Drawer ตัวกรองของจอเล็ก)
+export default function DownloadReportButton({ thing, from, to, fullWidth = false }) {
   const theme = useTheme();
   const { text } = theme.palette;
   const [anchorEl, setAnchorEl] = useState(null);
@@ -94,9 +95,10 @@ export default function DownloadReportButton({ thing, from, to }) {
         }
       >
         {/* span ให้ tooltip ทำงานตอนปุ่ม disabled */}
-        <span>
+        <span style={fullWidth ? { display: "block" } : undefined}>
           <Button
             variant="outlined"
+            fullWidth={fullWidth}
             disabled={disabled}
             onClick={(e) => setAnchorEl(e.currentTarget)}
             startIcon={
@@ -114,7 +116,8 @@ export default function DownloadReportButton({ thing, from, to }) {
               color: text.secondary,
               fontWeight: 400,
               px: 1.5,
-              py: 0.85,
+              height: theme.custom.filterControlHeight,
+              bgcolor: theme.palette.background.paper,
               whiteSpace: "nowrap",
             }}
             aria-haspopup="menu"

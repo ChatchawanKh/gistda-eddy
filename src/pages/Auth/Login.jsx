@@ -31,7 +31,8 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = location.state?.from?.pathname || "/dashboard";
+  const from = location.state?.from;
+  const redirectTo = from?.pathname ? `${from.pathname}${from.search || ""}` : "/dashboard";
   const infoMessage = location.state?.message || "";
 
   async function handleSubmit(e) {
@@ -109,6 +110,8 @@ export default function Login() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              flexWrap: "wrap",
+              columnGap: 1,
             }}
           >
             <FormControlLabel

@@ -22,58 +22,38 @@ function daysBefore(date, n) {
   return new Date(date.getTime() - n * 24 * 60 * 60 * 1000);
 }
 
-function startOfMonthUTC(date) {
-  const d = new Date(date);
-  d.setUTCDate(1);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-
+// ชุด preset แบบทางกลางระหว่าง FluxSuite กับการดูย้อนหลังยาว: "2 วันล่าสุด"
+// (ตรงกับหน้า Station Dashboard ของ FluxSuite) + 7 / 30 วัน ส่วน "ทั้งหมด" ต้องรู้
+// ช่วงที่มีข้อมูล จึงเพิ่มใน DateRangePickerModern.jsx
 export function buildDatePresets(anchorDate) {
   const anchor = anchorDate ? new Date(anchorDate) : new Date();
   const today = startOfDayUTC(anchor);
-  const yesterday = daysBefore(today, 1);
-  const thisMonthStart = startOfMonthUTC(anchor);
-  const lastMonthEnd = new Date(thisMonthStart.getTime() - 1);
-  const lastMonthStart = startOfMonthUTC(lastMonthEnd);
+  const to = endOfDayUTC(anchor).toISOString();
 
   return [
     {
-      key: "today",
-      label: "วันนี้ (ล่าสุด)",
-      range: { from: today.toISOString(), to: endOfDayUTC(anchor).toISOString() },
-    },
-    {
-      key: "yesterday",
-      label: "เมื่อวาน",
-      range: { from: yesterday.toISOString(), to: endOfDayUTC(yesterday).toISOString() },
+      key: "2d",
+      label: "2 วันล่าสุด (ค่าเริ่มต้น)",
+      range: { from: daysBefore(today, 1).toISOString(), to },
     },
     {
       key: "7d",
       label: "7 วันล่าสุด",
-      range: { from: daysBefore(today, 6).toISOString(), to: endOfDayUTC(anchor).toISOString() },
+      range: { from: daysBefore(today, 6).toISOString(), to },
     },
     {
       key: "30d",
       label: "30 วันล่าสุด",
-      range: { from: daysBefore(today, 29).toISOString(), to: endOfDayUTC(anchor).toISOString() },
-    },
-    {
-      key: "90d",
-      label: "90 วันล่าสุด",
-      range: { from: daysBefore(today, 89).toISOString(), to: endOfDayUTC(anchor).toISOString() },
-    },
-    {
-      key: "thisMonth",
-      label: "เดือนนี้",
-      range: { from: thisMonthStart.toISOString(), to: endOfDayUTC(anchor).toISOString() },
-    },
-    {
-      key: "lastMonth",
-      label: "เดือนที่แล้ว",
-      range: { from: lastMonthStart.toISOString(), to: endOfDayUTC(lastMonthEnd).toISOString() },
+      range: { from: daysBefore(today, 29).toISOString(), to },
     },
   ];
+}
+
+// ช่วงเวลาที่หน้า Dashboard ใช้ตอนเปิดครั้งแรก
+export const DEFAULT_PRESET_KEY = "2d";
+
+export function findPreset(anchorDate, key) {
+  return buildDatePresets(anchorDate).find((p) => p.key === key);
 }
 
 const TOLERANCE_MS = 60 * 1000;
@@ -92,7 +72,9 @@ export function matchPreset(presets, from, to) {
 
 export function formatRangeLabel(from, to) {
   if (!from || !to) return "เลือกช่วงเวลา";
-  const opts = { day: "2-digit", month: "short", year: "numeric" };
+  // ช่วงเวลาเป็นขอบวันแบบ UTC — ต้องแสดงแบบ UTC ด้วย ไม่งั้นเวลาไทย (UTC+7)
+  // จะเห็นวันสิ้นสุด 23:59 UTC เป็นวันถัดไป
+  const opts = { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" };
   const fromLabel = new Date(from).toLocaleDateString("th-TH", opts);
   const toLabel = new Date(to).toLocaleDateString("th-TH", opts);
   return fromLabel === toLabel ? fromLabel : `${fromLabel} – ${toLabel}`;

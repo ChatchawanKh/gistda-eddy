@@ -20,8 +20,8 @@ export default function AuthLayout({ title, subtitle, children }) {
         p: 2,
       }}
     >
-      <Card sx={{ width: 400 }}>
-        <CardContent sx={{ p: 4 }}>
+      <Card sx={{ width: "100%", maxWidth: 400 }}>
+        <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 3 }}>
             <Box
               sx={{

@@ -202,6 +202,7 @@ export default function SidebarContent({
                   <ListItemButton
                     onClick={() => onSelect(item.key)}
                     sx={{
+                      position: "relative",
                       width: open ? "100%" : 32,
                       minHeight: 32,
                       borderRadius: `${radius}px`,
@@ -227,6 +228,20 @@ export default function SidebarContent({
                       }}
                     >
                       <Icon sx={{ fontSize: 15 }} />
+                      {/* sidebar ย่อ: แสดง badge เป็นจุดบนไอคอน */}
+                      {!open && item.badge > 0 && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 4,
+                            right: 4,
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            bgcolor: theme.palette.error.main,
+                          }}
+                        />
+                      )}
                     </ListItemIcon>
 
                     {open && (
@@ -242,6 +257,33 @@ export default function SidebarContent({
                           },
                         }}
                       />
+                    )}
+
+                    {open && item.badge > 0 && (
+                      <Box
+                        sx={{
+                          minWidth: 20,
+                          height: 20,
+                          px: 0.6,
+                          ml: 1,
+                          borderRadius: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          bgcolor: isActive
+                            ? primary.contrastText
+                            : theme.palette.error.main,
+                          color: isActive
+                            ? theme.palette.error.main
+                            : theme.palette.error.contrastText,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {item.badge}
+                      </Box>
                     )}
                   </ListItemButton>
                 );
