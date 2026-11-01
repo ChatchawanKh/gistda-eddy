@@ -48,6 +48,11 @@ axiosClient.interceptors.response.use(
           localStorage.setItem('accessToken', data.accessToken);
           isRefreshing = false;
           onRefreshed(data.accessToken);
+          // request ตัวที่สั่ง refresh ต้องยิงซ้ำเองตรงนี้ — ห้ามเข้าคิวด้านล่าง เพราะ onRefreshed() ล้างคิวไปแล้ว
+          // ถ้าเข้าคิวจะค้าง แล้วถูกยิงซ้ำทีหลังตอน refresh รอบถัดไป (ทับข้อมูลที่แก้ไปแล้วได้)
+          // return แบบไม่ await -> ถ้า request ที่ยิงซ้ำ error จะไม่ตกไปที่ catch (ไม่เด้งไปหน้า login)
+          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+          return axiosClient(originalRequest);
         } catch (refreshError) {
           isRefreshing = false;
           localStorage.removeItem('accessToken');

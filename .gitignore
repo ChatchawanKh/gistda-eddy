@@ -30,3 +30,6 @@ dist-ssr
 
 # Vercel CLI (project link + .env.local ที่ vercel link สร้าง — ถูกกันด้วย .env.* ด้านบนแล้ว)
 .vercel
+
+# cache ข้อมูลขอบเขตการปกครองจาก GISTDA (admin-boundary)
+.cache

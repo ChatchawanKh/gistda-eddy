@@ -206,20 +206,44 @@ function FooterChip({ icon: Icon, color, strong, text }) {
   );
 }
 
-// span = จำนวนช่องในกริด 6 คอลัมน์ (sm ขึ้นไป), xsSpan = ในกริด 2 คอลัมน์ของจอ xs
-// การ์ดครึ่งแถวบนจอ xs ซ่อน sparkline ไว้ ให้ตัวเลขมีที่พอ
-function KpiCard({ label, suffix, value, footer, spark, span, xsSpan = 2 }) {
+// เลย์เอาต์ตามความกว้างของกล่อง KPI เอง (container query) ไม่ใช่ความกว้างจอ
+// เพราะคอลัมน์ซ้ายแคบลงได้ทั้งจากจอเล็กและจากการกดขยายแผนที่ด้านข้าง (เหลือ 40%)
+//   narrow (< 420px)  กริด 2 คอลัมน์ — การ์ดครึ่งแถวซ่อน sparkline ให้ตัวเลขมีที่พอ
+//   medium (420–679)  กริด 2 คอลัมน์ — การ์ดละครึ่งแถว ค่าต่ำสุดเต็มแถว
+//   wide   (≥ 680px)  กริด 6 คอลัมน์ — แถวบน 2 การ์ด (ใบละ 3 ช่อง) แถวล่าง 3 การ์ด (ใบละ 2 ช่อง)
+const KPI_CONTAINER = "kpi-summary";
+const CQ_MEDIUM = `@container ${KPI_CONTAINER} (min-width: 420px)`;
+const CQ_WIDE = `@container ${KPI_CONTAINER} (min-width: 680px)`;
+
+// [narrow, medium, wide] — จำนวนช่องที่แต่ละการ์ดกิน (จำนวนข้อมูล, แนวโน้ม, เฉลี่ย, สูงสุด, ต่ำสุด)
+const CARD_SPANS = [
+  [2, 1, 3],
+  [2, 1, 3],
+  [1, 1, 2],
+  [1, 1, 2],
+  [2, 2, 2],
+];
+
+const spanSx = ([narrow, medium, wide]) => ({
+  gridColumn: `span ${narrow}`,
+  [CQ_MEDIUM]: { gridColumn: `span ${medium}` },
+  [CQ_WIDE]: { gridColumn: `span ${wide}` },
+});
+
+function KpiCard({ label, suffix, value, footer, spark, spans }) {
   const theme = useTheme();
   const { text } = theme.palette;
-  const compactOnXs = xsSpan === 1;
+  const compactWhenNarrow = spans[0] === 1;
   return (
     <Box
       sx={{
         ...theme.custom.card,
-        gridColumn: { xs: `span ${xsSpan}`, sm: `span ${span}` },
+        gridColumn: `span ${spans[0]}`,
         minWidth: 0,
-        px: { xs: 1.5, sm: 2.25 },
-        py: { xs: 1.5, sm: 2 },
+        px: 1.5,
+        py: 1.5,
+        [CQ_MEDIUM]: { gridColumn: `span ${spans[1]}`, px: 2, py: 2 },
+        [CQ_WIDE]: { gridColumn: `span ${spans[2]}` },
         display: "flex",
         flexDirection: "column",
         gap: 1.25,
@@ -248,7 +272,8 @@ function KpiCard({ label, suffix, value, footer, spark, span, xsSpan = 2 }) {
         <Box sx={{ flexShrink: 0, minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: { xs: 22, sm: 26 },
+              fontSize: 22,
+              [CQ_MEDIUM]: { fontSize: 26 },
               fontWeight: 600,
               lineHeight: 1.15,
               color: text.primary,
@@ -261,7 +286,8 @@ function KpiCard({ label, suffix, value, footer, spark, span, xsSpan = 2 }) {
         </Box>
         <Box
           sx={{
-            display: compactOnXs ? { xs: "none", sm: "block" } : "block",
+            display: compactWhenNarrow ? "none" : "block",
+            [CQ_MEDIUM]: { display: "block" },
             flex: 1,
             minWidth: 48,
             maxWidth: 140,
@@ -324,34 +350,24 @@ export default function InsightSummaryBar({
   const maxRow = numericRows[argMax(values)];
   const minRow = numericRows[argMin(values)];
 
-  // grid 6 คอลัมน์: แถวบน 2 การ์ด (ใบละ 3 ช่อง) แถวล่าง 3 การ์ด (ใบละ 2 ช่อง)
-  // จอ xs: grid 2 คอลัมน์ — จำนวนข้อมูล/แนวโน้มเต็มแถว, เฉลี่ย+สูงสุดครึ่งแถว, ต่ำสุดเต็มแถว
-  const XS_SPANS = [2, 2, 1, 1, 2];
   return (
-    <Box>
+    <Box sx={{ containerType: "inline-size", containerName: KPI_CONTAINER }}>
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: {
-            xs: "repeat(2, minmax(0, 1fr))",
-            sm: "repeat(6, minmax(0, 1fr))",
-          },
-          gap: { xs: 1, sm: 1.5 },
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: 1,
+          [CQ_MEDIUM]: { gap: 1.5 },
+          [CQ_WIDE]: { gridTemplateColumns: "repeat(6, minmax(0, 1fr))" },
         }}
       >
         {loading ? (
-          [0, 1, 2, 3, 4].map((i) => (
+          CARD_SPANS.map((spans, i) => (
             <Skeleton
               key={i}
               variant="rounded"
               height={118}
-              sx={{
-                borderRadius: `${radius}px`,
-                gridColumn: {
-                  xs: `span ${XS_SPANS[i]}`,
-                  sm: i < 2 ? "span 3" : "span 2",
-                },
-              }}
+              sx={{ borderRadius: `${radius}px`, ...spanSx(spans) }}
             />
           ))
         ) : !summary ? (
@@ -371,7 +387,7 @@ export default function InsightSummaryBar({
         ) : (
           <>
             <KpiCard
-              span={3}
+              spans={CARD_SPANS[0]}
               label="จำนวนข้อมูลทั้งหมด"
               suffix="ช่วงที่เลือก"
               value={fmt(summary.count)}
@@ -379,7 +395,7 @@ export default function InsightSummaryBar({
               footer={<FooterChip text="จำนวนค่าที่ตรวจวัดได้" />}
             />
             <KpiCard
-              span={3}
+              spans={CARD_SPANS[1]}
               label="แนวโน้มการเปลี่ยนแปลง"
               suffix="ช่วงที่เลือก"
               value={
@@ -404,8 +420,7 @@ export default function InsightSummaryBar({
               }
             />
             <KpiCard
-              span={2}
-              xsSpan={XS_SPANS[2]}
+              spans={CARD_SPANS[2]}
               label="ค่าเฉลี่ย"
               suffix={unit}
               value={fmt(summary.avg)}
@@ -413,8 +428,7 @@ export default function InsightSummaryBar({
               footer={<FooterChip text="" />}
             />
             <KpiCard
-              span={2}
-              xsSpan={XS_SPANS[3]}
+              spans={CARD_SPANS[3]}
               label="ค่าสูงสุด"
               suffix={unit}
               value={fmt(summary.max)}
@@ -430,7 +444,7 @@ export default function InsightSummaryBar({
               }
             />
             <KpiCard
-              span={2}
+              spans={CARD_SPANS[4]}
               label="ค่าต่ำสุด"
               suffix={unit}
               value={fmt(summary.min)}

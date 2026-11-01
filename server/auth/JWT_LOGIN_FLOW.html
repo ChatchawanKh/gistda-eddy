@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JWT Login Flow</title>
+<meta name="description" content="อธิบายระบบ login ด้วย JWT ของ GISTDA Eddy Auth API: access/refresh token, middleware, การต่ออายุ และข้อสังเกตจากโค้ด">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface-2: #f0f0ec;
+    --text: #1d1d1b;
+    --muted: #5f5f5a;
+    --border: #e2e2dc;
+    --accent: #2457c5;
+    --accent-soft: #e6edfb;
+    --lifeline: #cfcfc8;
+    --arrow: #3c3c38;
+    --jwt-h: #c2410c;
+    --jwt-p: #7c3aed;
+    --jwt-s: #0f766e;
+    --ok: #15803d;      --ok-soft: #e3f4e8;
+    --warn: #b45309;    --warn-soft: #fcf0dc;
+    --bad: #b91c1c;     --bad-soft: #fbe5e5;
+    --info: #a16207;    --info-soft: #fbf3d4;
+    --neutral-soft: #ecece8;
+    --code-bg: #f3f3ef;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413;
+      --surface: #1c1c1a;
+      --surface-2: #252522;
+      --text: #ecebe6;
+      --muted: #a3a29b;
+      --border: #33332f;
+      --accent: #7ea2f2;
+      --accent-soft: #1f2a44;
+      --lifeline: #45453f;
+      --arrow: #c9c8c1;
+      --jwt-h: #fb923c;
+      --jwt-p: #b69cfb;
+      --jwt-s: #2dd4bf;
+      --ok: #4ade80;      --ok-soft: #173322;
+      --warn: #fbbf24;    --warn-soft: #3a2c12;
+      --bad: #f87171;     --bad-soft: #3d1c1c;
+      --info: #facc15;    --info-soft: #35300f;
+      --neutral-soft: #2a2a27;
+      --code-bg: #20201e;
+      --shadow: none;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413;
+    --surface: #1c1c1a;
+    --surface-2: #252522;
+    --text: #ecebe6;
+    --muted: #a3a29b;
+    --border: #33332f;
+    --accent: #7ea2f2;
+    --accent-soft: #1f2a44;
+    --lifeline: #45453f;
+    --arrow: #c9c8c1;
+    --jwt-h: #fb923c;
+    --jwt-p: #b69cfb;
+    --jwt-s: #2dd4bf;
+    --ok: #4ade80;      --ok-soft: #173322;
+    --warn: #fbbf24;    --warn-soft: #3a2c12;
+    --bad: #f87171;     --bad-soft: #3d1c1c;
+    --info: #facc15;    --info-soft: #35300f;
+    --neutral-soft: #2a2a27;
+    --code-bg: #20201e;
+    --shadow: none;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 16px 80px; }
+  code, pre, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .88em; }
+  :not(pre) > code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 .3em;
+    overflow-wrap: anywhere;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 12px 0;
+  }
+  a { color: var(--accent); }
+  h1, h2, h3 { line-height: 1.3; }
+  h2 {
+    font-size: 1.45rem;
+    margin: 56px 0 8px;
+    padding-top: 8px;
+    scroll-margin-top: 16px;
+  }
+  h2 .num { color: var(--muted); font-weight: 500; margin-right: .35em; }
+  h3 { font-size: 1.08rem; margin: 28px 0 8px; }
+  p { margin: 8px 0 12px; }
+  .muted { color: var(--muted); }
+
+  /* ---------- header ---------- */
+  .eyebrow { font-size: .85rem; color: var(--muted); letter-spacing: .02em; }
+  h1 { font-size: 2.1rem; margin: 4px 0 10px; }
+  .lede { font-size: 1.06rem; color: var(--muted); max-width: 680px; }
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin: 22px 0 0; padding: 0; list-style: none;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 3px 11px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    font-size: .88rem;
+  }
+  .toc a:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- cards ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .token-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .token-card h3 { margin: 0 0 2px; font-size: 1.1rem; }
+  .token-card .tag { font-size: .82rem; color: var(--muted); }
+  .token-card dl { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: .93rem; }
+  .token-card dt { color: var(--muted); white-space: nowrap; }
+  .token-card dd { margin: 0; }
+  .token-card.access { border-top: 3px solid var(--accent); }
+  .token-card.refresh { border-top: 3px solid var(--jwt-s); }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+  }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+
+  /* ---------- sequence diagram ---------- */
+  .seq-card { padding: 16px 12px 14px; overflow: hidden; }
+  .seq {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 4px;
+    font-size: .86rem;
+    line-height: 1.4;
+  }
+  .seq .actor {
+    grid-column: span 2;
+    text-align: center;
+    margin: 0 6px 6px;
+    padding: 7px 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    font-weight: 600;
+  }
+  .seq .actor small { display: block; font-weight: 400; color: var(--muted); font-size: .78rem; }
+  .seq .body {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 0 4px;
+    background-image:
+      linear-gradient(var(--lifeline), var(--lifeline)),
+      linear-gradient(var(--lifeline), var(--lifeline)),
+      linear-gradient(var(--lifeline), var(--lifeline));
+    background-size: 2px 100%;
+    background-repeat: no-repeat;
+    background-position: calc(100% / 6 - 1px) 0, calc(50% ) 0, calc(500% / 6 - 1px) 0;
+  }
+  .seq .msg {
+    position: relative;
+    text-align: center;
+    padding: 0 10px 12px;
+    overflow-wrap: anywhere;
+  }
+  .seq .msg::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 4px;
+    border-top: 2px solid var(--arrow);
+  }
+  .seq .msg.ret::after { border-top-style: dashed; }
+  .seq .msg::before {
+    content: "";
+    position: absolute; bottom: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .seq .msg.r::before { right: -1px; border-left: 9px solid var(--arrow); }
+  .seq .msg.l::before { left: -1px; border-right: 9px solid var(--arrow); }
+  .seq .n {
+    display: inline-grid; place-items: center;
+    width: 1.35em; height: 1.35em;
+    margin-right: 4px;
+    border-radius: 50%;
+    background: var(--text); color: var(--bg);
+    font-size: .74em; font-weight: 600;
+    vertical-align: 1px;
+  }
+  .seq .note {
+    margin: 2px 4px;
+    padding: 5px 8px;
+    text-align: center;
+    background: var(--info-soft);
+    border: 1px solid color-mix(in srgb, var(--info) 35%, transparent);
+    border-radius: 6px;
+    font-size: .8rem;
+    position: relative; z-index: 1;
+  }
+  .seq .branch {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    border-top: 1px dashed var(--muted);
+    font-size: .76rem;
+    color: var(--muted);
+  }
+  .seq .branch span {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 0;
+    padding: 0 8px;
+    border-radius: 0 0 6px 6px;
+    position: relative; z-index: 1;
+  }
+  .seq .branch.ok span { color: var(--ok); }
+  .seq .branch.bad span { color: var(--bad); }
+  /* ทุกแถวใน .body อยู่บรรทัดของตัวเอง — ตำแหน่งแนวนอนกำหนดด้วย margin/width เทียบกับ lifeline (1/6, 3/6, 5/6) */
+  .seq .branch { align-self: stretch; }
+  .c-bA { margin-left: 16.667%; width: 33.333%; }  /* actor 1 <-> actor 2 */
+  .c-bD { margin-left: 16.667%; width: 66.667%; }  /* actor 1 <-> actor 3 */
+  .c-AD { margin-left: 50%;     width: 33.333%; }  /* actor 2 <-> actor 3 */
+  .seq .note.on-B { margin-left: 4px;                  width: calc(33.333% - 8px); }
+  .seq .note.on-A { margin-left: calc(33.333% + 4px);  width: calc(33.333% - 8px); }
+  .seq .note.on-D { margin-left: calc(66.667% + 4px);  width: calc(33.333% - 8px); }
+
+  /* ---------- steps table ---------- */
+  .table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.idx { color: var(--muted); width: 2em; font-variant-numeric: tabular-nums; }
+
+  /* ---------- JWT anatomy ---------- */
+  .jwt-string {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .86rem;
+    overflow-wrap: anywhere;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    line-height: 1.6;
+  }
+  .jh { color: var(--jwt-h); } .jp { color: var(--jwt-p); } .js { color: var(--jwt-s); }
+  .jwt-parts { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; margin-top: 10px; }
+  .jwt-parts .part { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; min-width: 0; }
+  .jwt-parts .part b { display: block; font-size: .85rem; margin-bottom: 4px; }
+  .jwt-parts .part.h b { color: var(--jwt-h); }
+  .jwt-parts .part.p b { color: var(--jwt-p); }
+  .jwt-parts .part.s b { color: var(--jwt-s); }
+  .jwt-parts pre { margin: 0; padding: 8px 10px; font-size: .8rem; }
+  .jwt-parts .part p { font-size: .86rem; margin: 0; }
+
+  /* ---------- middleware gates ---------- */
+  .gates { display: grid; gap: 0; margin: 14px 0; }
+  .gate { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; }
+  .gate .box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    box-shadow: var(--shadow);
+  }
+  .gate .box b { display: block; }
+  .gate .box small { color: var(--muted); }
+  .gate .box.start { background: var(--surface-2); }
+  .gate .box.end { border-color: var(--ok); background: var(--ok-soft); }
+  .outcomes { list-style: none; margin: 0; padding: 4px 0 0; display: grid; gap: 6px; font-size: .9rem; }
+  .outcomes li { display: flex; gap: 8px; align-items: baseline; }
+  .pill {
+    display: inline-block;
+    min-width: 3.1em;
+    text-align: center;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+    font-weight: 500;
+    line-height: 1.6;
+    flex: none;
+  }
+  .pill.s2 { background: var(--ok-soft); color: var(--ok); }
+  .pill.s4 { background: var(--bad-soft); color: var(--bad); }
+  .pill.s401 { background: var(--warn-soft); color: var(--warn); }
+  .down { width: 220px; text-align: center; color: var(--muted); line-height: 1; padding: 6px 0; font-size: 1.1rem; }
+
+  /* ---------- observations ---------- */
+  .obs { display: grid; gap: 12px; margin-top: 14px; }
+  .obs .card { padding: 14px 18px; }
+  .obs h3 { margin: 0 0 4px; font-size: 1rem; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .sev {
+    font-size: .74rem; font-weight: 600;
+    padding: 1px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .sev.bug { background: var(--bad-soft); color: var(--bad); }
+  .sev.sec { background: var(--warn-soft); color: var(--warn); }
+  .sev.cfg { background: var(--info-soft); color: var(--info); }
+  .sev.ops { background: var(--neutral-soft); color: var(--muted); }
+  .sev.done { background: var(--ok-soft); color: var(--ok); }
+  .obs .card.bug { border-left: 3px solid var(--bad); }
+  .obs .card.done { border-left: 3px solid var(--ok); }
+  .obs p { margin: 4px 0; font-size: .94rem; }
+  .obs ul { margin: 4px 0 8px; padding-left: 20px; font-size: .94rem; }
+  .obs .fix { font-size: .9rem; color: var(--muted); }
+  .obs pre { font-size: .8rem; }
+
+  details {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 0 16px;
+    margin: 12px 0;
+  }
+  details > summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
+  details[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+
+  footer { margin-top: 64px; font-size: .85rem; color: var(--muted); border-top: 1px solid var(--border); padding-top: 16px; }
+
+  @media (max-width: 640px) {
+    .wrap { padding-top: 28px; }
+    h1 { font-size: 1.65rem; }
+    .token-grid, .jwt-parts { grid-template-columns: 1fr; }
+    .seq { font-size: .76rem; }
+    .seq .msg { padding: 0 4px 12px; }
+    .seq .actor { margin: 0 2px 6px; font-size: .8rem; }
+    .gate { grid-template-columns: 1fr; gap: 8px; }
+    .down { width: auto; }
+    .outcomes { padding-left: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">GISTDA Eddy · server/auth</div>
+  <h1>ระบบ Login ด้วย JWT</h1>
+  <p class="lede">อธิบายว่าเกิดอะไรขึ้นตั้งแต่ผู้ใช้กดปุ่มเข้าสู่ระบบ จนถึงการต่ออายุ token และการออกจากระบบ อ้างอิงจากโค้ดจริงใน <code>server/auth</code> และ <code>src/api/axiosClient.js</code>, <code>src/context/AuthContext.jsx</code></p>
+  <ul class="toc">
+    <li><a href="#overview">1 · token สองตัว</a></li>
+    <li><a href="#login">2 · ขั้นตอน Login</a></li>
+    <li><a href="#jwt">3 · ข้างใน JWT</a></li>
+    <li><a href="#middleware">4 · Middleware</a></li>
+    <li><a href="#refresh">5 · Refresh</a></li>
+    <li><a href="#logout">6 · Logout</a></li>
+    <li><a href="#api">7 · API</a></li>
+    <li><a href="#notes">8 · ข้อสังเกต</a></li>
+    <li><a href="#files">9 · ไฟล์</a></li>
+  </ul>
+</header>
+
+<!-- ================= 1 ================= -->
+<h2 id="overview"><span class="num">1</span>ภาพรวม: token สองตัว</h2>
+<p>ระบบใช้ JWT สองตัวที่ทำหน้าที่ต่างกัน เพื่อให้ได้ทั้ง<b>ความเร็ว</b> (ไม่ต้อง query DB ทุก request) และ<b>ความปลอดภัย</b> (ยกเลิก session ได้จริง)</p>
+
+<div class="token-grid">
+  <div class="card token-card access">
+    <h3>Access Token</h3>
+    <div class="tag">บัตรผ่านอายุสั้น แนบไปกับทุก request</div>
+    <dl>
+      <dt>อายุ</dt><dd><code>15m</code> <span class="muted">(JWT_ACCESS_EXPIRES_IN)</span></dd>
+      <dt>Secret</dt><dd><code>JWT_ACCESS_SECRET</code></dd>
+      <dt>Payload</dt><dd><code>user_id</code> <code>email</code> <code>role</code></dd>
+      <dt>ส่งกลับทาง</dt><dd>JSON body ของ <code>/login</code>, <code>/refresh</code></dd>
+      <dt>Browser เก็บ</dt><dd><code>localStorage.accessToken</code></dd>
+      <dt>Server เก็บ</dt><dd>ไม่เก็บ (stateless)</dd>
+      <dt>ยกเลิกได้</dt><dd>ไม่ได้ ใช้ได้จนหมดอายุ</dd>
+    </dl>
+  </div>
+  <div class="card token-card refresh">
+    <h3>Refresh Token</h3>
+    <div class="tag">ใช้ขอ access token ใบใหม่เมื่อใบเดิมหมดอายุ</div>
+    <dl>
+      <dt>อายุ</dt><dd><code>30d</code> ถ้าติ๊ก "จดจำฉัน" / <code>1d</code> ถ้าไม่ติ๊ก</dd>
+      <dt>Secret</dt><dd><code>JWT_REFRESH_SECRET</code></dd>
+      <dt>Payload</dt><dd><code>user_id</code> เท่านั้น</dd>
+      <dt>ส่งกลับทาง</dt><dd>cookie <code>refreshToken</code> (httpOnly)</dd>
+      <dt>Browser เก็บ</dt><dd>cookie ที่ JavaScript อ่านไม่ได้</dd>
+      <dt>Server เก็บ</dt><dd>SHA-256 hash ในตาราง <code>refresh_tokens</code></dd>
+      <dt>ยกเลิกได้</dt><dd>ได้ ตั้ง <code>revoked = TRUE</code></dd>
+    </dl>
+  </div>
+</div>
+
+<div class="callout"><b>หลักคิด:</b> access token อายุสั้นจนถ้าหลุดก็เสียหายไม่นาน ส่วน refresh token ที่อายุยาวถูกซ่อนไว้ใน httpOnly cookie และตรวจกับ DB ทุกครั้งที่ใช้ จึงยกเลิกได้</div>
+
+<!-- ================= 2 ================= -->
+<h2 id="login"><span class="num">2</span>ขั้นตอน Login</h2>
+<p class="muted"><code>POST /api/auth/login</code> → <code>controllers/auth.controller.js</code> ฟังก์ชัน <code>login</code></p>
+
+<div class="card seq-card" role="img" aria-label="Sequence diagram ขั้นตอน login ระหว่าง Browser, Auth API และ PostgreSQL">
+  <div class="seq">
+    <div class="actor">Browser<small>React</small></div>
+    <div class="actor">Auth API<small>Express</small></div>
+    <div class="actor">PostgreSQL</div>
+    <div class="body">
+      <div class="msg r c-bA"><span class="n">1</span><code>POST /auth/login</code><br>{ email, password, rememberMe }</div>
+      <div class="note on-A">rate limit: 20/IP และผิด 5/อีเมล ต่อ 15 นาที</div>
+      <div class="msg r c-AD"><span class="n">2</span>SELECT user + role</div>
+      <div class="msg l ret c-AD"><span class="n">3</span>user หรือไม่พบ</div>
+      <div class="note on-A">bcrypt.compare<br>(ไม่พบ user ก็เทียบกับ dummy hash)</div>
+
+      <div class="branch bad"><span>กรณี รหัสผิด / ไม่พบอีเมล</span></div>
+      <div class="msg l ret c-bA"><span class="pill s4">401</span> อีเมลหรือรหัสผ่านไม่ถูกต้อง</div>
+
+      <div class="branch bad"><span>กรณี รออนุมัติ / ถูกระงับ</span></div>
+      <div class="msg l ret c-bA"><span class="pill s4">403</span> ข้อความสถานะบัญชี</div>
+
+      <div class="branch ok"><span>กรณี ผ่าน</span></div>
+      <div class="note on-A">สร้าง accessToken + refreshToken</div>
+      <div class="msg r c-AD"><span class="n">4</span>INSERT refresh_tokens<br>sha256(token), expires_at</div>
+      <div class="msg r c-AD"><span class="n">5</span>UPDATE last_login_at</div>
+      <div class="msg l ret c-bA"><span class="n">6</span><span class="pill s2">200</span> { accessToken, user }<br>+ Set-Cookie: refreshToken</div>
+      <div class="note on-B">เก็บ accessToken<br>ใน localStorage</div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>#</th><th>ขั้นตอน</th><th>ทำไมต้องทำ</th></tr></thead>
+  <tbody>
+    <tr><td class="idx">1</td><td>ผ่าน <code>loginIpLimiter</code> (20 ครั้ง/15 นาที ต่อ IP) และ <code>loginAccountLimiter</code> (ผิด 5 ครั้ง/15 นาที ต่ออีเมล ครั้งที่สำเร็จไม่นับ)</td><td>กัน brute-force ทั้งจากเครื่องเดียว และจากหลายเครื่องที่รุมเดาบัญชีเดียว</td></tr>
+    <tr><td class="idx">2</td><td>ตรวจว่ามี <code>email</code>, <code>password</code></td><td>ไม่มี → <span class="pill s4">400</span></td></tr>
+    <tr><td class="idx">3</td><td>ดึง user พร้อม <code>role_name</code> (JOIN <code>roles</code>)</td><td>ต้องใช้ role ไปฝังใน token</td></tr>
+    <tr><td class="idx">4</td><td><code>bcrypt.compare</code> กับ <code>password_hash</code> ถ้าไม่พบอีเมลจะเทียบกับ <code>DUMMY_PASSWORD_HASH</code></td><td>ให้เวลาตอบเท่ากันทุกกรณี คนนอกจึงจับเวลาเดาไม่ได้ว่าอีเมลไหนมีในระบบ</td></tr>
+    <tr><td class="idx">5</td><td>รหัสผิดหรือไม่พบอีเมล → <span class="pill s4">401</span> ข้อความเดียวกัน</td><td>ไม่บอกว่าผิดที่อีเมลหรือรหัส</td></tr>
+    <tr><td class="idx">6</td><td>เช็ค <code>is_approved</code> แล้วค่อยเช็ค <code>is_active</code> → <span class="pill s4">403</span></td><td>ทำ<b>หลัง</b>ยืนยันรหัสผ่าน เพื่อไม่ให้คนที่รู้แค่อีเมลไล่เช็คสถานะบัญชีได้</td></tr>
+    <tr><td class="idx">7</td><td>สร้าง access token และ refresh token (<code>30d</code> หรือ <code>1d</code>)</td><td>ดู <a href="#jwt">ข้อ 3</a></td></tr>
+    <tr><td class="idx">8</td><td><code>INSERT INTO refresh_tokens</code> เก็บ <b>SHA-256 ของ refresh token</b></td><td>ถ้า DB หลุด คนร้ายก็เอา hash ไปใช้แทน token ไม่ได้</td></tr>
+    <tr><td class="idx">9</td><td>อัปเดต <code>last_login_at</code></td><td>แสดงในหน้าจัดการผู้ใช้</td></tr>
+    <tr><td class="idx">10</td><td><code>Set-Cookie: refreshToken</code> แบบ <code>httpOnly</code>, <code>sameSite: strict</code>, <code>secure</code> (production)</td><td>JavaScript อ่านไม่ได้ (กัน XSS ขโมย) และไม่ถูกส่งจากเว็บอื่น (กัน CSRF)</td></tr>
+    <tr><td class="idx">11</td><td>ตอบ <code>{ message, accessToken, user }</code></td><td>frontend เก็บ token และข้อมูลผู้ใช้</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>"จดจำการเข้าสู่ระบบ" (rememberMe)</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th></th><th>ติ๊ก</th><th>ไม่ติ๊ก</th></tr></thead>
+  <tbody>
+    <tr><td>อายุ refresh JWT</td><td><code>REMEMBER_ME_EXPIRES_IN</code> (30d)</td><td><code>SESSION_EXPIRES_IN</code> (1d)</td></tr>
+    <tr><td><code>expires_at</code> ใน DB</td><td>+30 วัน</td><td>+1 วัน</td></tr>
+    <tr><td>Cookie</td><td>มี <code>maxAge</code> 30 วัน อยู่ข้ามการปิดเบราว์เซอร์</td><td>session cookie หายเมื่อปิดเบราว์เซอร์</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================= 3 ================= -->
+<h2 id="jwt"><span class="num">3</span>ข้างใน JWT</h2>
+<p>สร้างใน <code>utils/token.js</code> ด้วย <code>jsonwebtoken</code> อัลกอริทึม default คือ <b>HS256</b> (เซ็นและตรวจด้วย secret ตัวเดียวกัน) JWT มี 3 ส่วนคั่นด้วยจุด</p>
+
+<div class="jwt-string" aria-label="ตัวอย่าง JWT"><span class="jh">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>.<span class="jp">eyJ1c2VyX2lkIjoiM2Y2YzFlMmEtLi4uIiwiZW1haWwiOiJzb21lb25lQGdpc3RkYS5vci50aCIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2MTk4MDQwMCwiZXhwIjoxNzYxOTgxMzAwfQ</span>.<span class="js">Xo1n3vJ8yQ0kK…</span></div>
+
+<div class="jwt-parts">
+  <div class="part h">
+    <b>Header</b>
+<pre>{
+  "alg": "HS256",
+  "typ": "JWT"
+}</pre>
+  </div>
+  <div class="part p">
+    <b>Payload (access token)</b>
+<pre>{
+  "user_id": "3f6c1e2a-…",
+  "email": "someone@gistda.or.th",
+  "role": "admin",
+  "iat": 1761980400,
+  "exp": 1761981300
+}</pre>
+  </div>
+  <div class="part s">
+    <b>Signature</b>
+    <p>HMAC-SHA256 ของ <code>header.payload</code> ด้วย <code>JWT_ACCESS_SECRET</code> ถ้ามีใครแก้ payload แม้ตัวเดียว ลายเซ็นจะไม่ตรง แล้ว <code>jwt.verify</code> จะปฏิเสธ</p>
+  </div>
+</div>
+<p class="muted">Refresh token มี payload แค่ <code>{ user_id, iat, exp }</code> และเซ็นด้วย <code>JWT_REFRESH_SECRET</code></p>
+
+<div class="callout warn"><b>payload ไม่ได้เข้ารหัส</b> ใครก็ decode อ่านได้ (base64url) ลายเซ็นมีไว้กันการ<b>แก้ไข</b>เท่านั้น ห้ามใส่ข้อมูลลับลงใน payload</div>
+
+<h3>การป้องกัน secret อ่อน</h3>
+<p><code>config/validateEnv.js</code> รันตอน start server ถ้าไม่ผ่านจะ <code>process.exit(1)</code> ทันที</p>
+<ul>
+  <li>ต้องตั้ง <code>JWT_ACCESS_SECRET</code> และ <code>JWT_REFRESH_SECRET</code> ทั้งคู่ ยาวอย่างน้อย 32 ตัวอักษร</li>
+  <li>ห้ามมีคำแบบค่าตัวอย่าง (<code>change</code>, <code>replace</code>, <code>secret</code>, <code>example</code>, <code>your_</code>)</li>
+  <li>สองตัวต้องไม่ซ้ำกัน ถ้าซ้ำ คนที่มี refresh token จะเอาไปใช้แทน access token ได้</li>
+</ul>
+<p class="muted">เหตุผล: ถ้า secret ว่างหรือเดาได้ ใครก็ปลอม token ที่มี <code>"role": "admin"</code> ได้เอง</p>
+
+<!-- ================= 4 ================= -->
+<h2 id="middleware"><span class="num">4</span>การป้องกัน route ด้วย middleware</h2>
+<p>ทุก request ที่ต้อง login ผ่านด่านตามลำดับนี้ ด่านไหนไม่ผ่านจะตอบกลับทันทีโดยไม่ถึง controller</p>
+
+<div class="gates">
+  <div class="gate">
+    <div class="box start"><b>Request</b><small>Authorization: Bearer &lt;token&gt;</small></div>
+    <div></div>
+  </div>
+  <div class="down" aria-hidden="true">↓</div>
+  <div class="gate">
+    <div class="box"><b>verifyToken</b><small>middleware/verifyToken.js</small></div>
+    <ul class="outcomes">
+      <li><span class="pill s401">401</span><span>ไม่มี header <code>Bearer</code></span></li>
+      <li><span class="pill s401">401</span><span>หมดอายุ → <code>code: "TOKEN_EXPIRED"</code> (frontend จะ refresh)</span></li>
+      <li><span class="pill s4">403</span><span>ลายเซ็นผิด / ถูกแก้ไข</span></li>
+      <li><span class="pill s2">ผ่าน</span><span><code>req.user = { user_id, email, role }</code> ไม่ query DB</span></li>
+    </ul>
+  </div>
+  <div class="down" aria-hidden="true">↓</div>
+  <div class="gate">
+    <div class="box"><b>checkRole('admin')</b><small>middleware/checkRole.js · เฉพาะบาง route</small></div>
+    <ul class="outcomes">
+      <li><span class="pill s401">401</span><span>ไม่มี <code>req.user</code> (ลืมใส่ verifyToken ก่อน)</span></li>
+      <li><span class="pill s4">403</span><span><code>req.user.role</code> ไม่อยู่ในรายการที่อนุญาต</span></li>
+    </ul>
+  </div>
+  <div class="down" aria-hidden="true">↓</div>
+  <div class="gate">
+    <div class="box end"><b>Controller</b><small>ใช้ req.user.user_id ได้เลย</small></div>
+    <div></div>
+  </div>
+</div>
+
+<pre><code>// routes/auth.routes.js : ต้อง login
+router.get('/me', verifyToken, authController.me);
+
+// routes/user.routes.js : ทุก route ในไฟล์ต้องเป็น admin
+router.use(verifyToken, checkRole('admin'));</code></pre>
+
+<!-- ================= 5 ================= -->
+<h2 id="refresh"><span class="num">5</span>การต่ออายุ token (Refresh)</h2>
+
+<h3>ฝั่ง server: <code>POST /api/auth/refresh</code></h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>#</th><th>ตรวจอะไร</th><th>ไม่ผ่าน</th></tr></thead>
+  <tbody>
+    <tr><td class="idx">1</td><td>มี cookie <code>refreshToken</code></td><td><span class="pill s401">401</span></td></tr>
+    <tr><td class="idx">2</td><td><code>jwt.verify</code> ด้วย <code>JWT_REFRESH_SECRET</code></td><td><span class="pill s4">403</span></td></tr>
+    <tr><td class="idx">3</td><td>มี row ใน <code>refresh_tokens</code> ที่ hash ตรง, <code>revoked = FALSE</code>, <code>expires_at &gt; NOW()</code></td><td><span class="pill s4">403</span></td></tr>
+    <tr><td class="idx">4</td><td>ดึง user + role <b>ล่าสุดจาก DB</b> และ <code>is_active = TRUE</code></td><td><span class="pill s4">403</span></td></tr>
+    <tr><td class="idx">5</td><td>ออก access token ใหม่ → <code>{ accessToken }</code></td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+<p>ขั้นที่ 4 ทำให้การเปลี่ยน role หรือระงับบัญชีมีผลภายในรอบ refresh ถัดไป (ไม่เกิน 15 นาที) ส่วน refresh token ตัวเดิมยังใช้ต่อได้ เพราะไม่มีการหมุนเปลี่ยน (ดู <a href="#notes">ข้อสังเกต 4</a>)</p>
+
+<h3>ฝั่ง frontend: refresh อัตโนมัติ</h3>
+<div class="card seq-card" role="img" aria-label="Sequence diagram การ refresh token อัตโนมัติใน axiosClient">
+  <div class="seq">
+    <div class="actor">Component<small>React</small></div>
+    <div class="actor">axiosClient<small>interceptor</small></div>
+    <div class="actor">Auth API</div>
+    <div class="body">
+      <div class="msg r c-bA"><span class="n">1</span>GET /api/…</div>
+      <div class="msg r c-AD"><span class="n">2</span>Bearer &lt;token เก่า&gt;</div>
+      <div class="msg l ret c-AD"><span class="n">3</span><span class="pill s401">401</span> TOKEN_EXPIRED</div>
+      <div class="msg r c-AD"><span class="n">4</span>POST /auth/refresh<br>(cookie แนบไปเอง)</div>
+
+      <div class="branch ok"><span>กรณี refresh สำเร็จ</span></div>
+      <div class="msg l ret c-AD"><span class="n">5</span>{ accessToken ใหม่ }</div>
+      <div class="note on-A">บันทึกลง localStorage<br>ปล่อย request ที่รอในคิว</div>
+      <div class="msg r c-AD"><span class="n">6</span>ยิง request เดิมซ้ำ</div>
+      <div class="msg l ret c-AD"><span class="pill s2">200</span></div>
+      <div class="msg l ret c-bA"><span class="n">7</span>ข้อมูล</div>
+
+      <div class="branch bad"><span>กรณี refresh ไม่ผ่าน</span></div>
+      <div class="note on-A">ลบ accessToken<br>ไปหน้า /login</div>
+    </div>
+  </div>
+</div>
+
+<ul>
+  <li><code>src/api/axiosClient.js</code> มี request interceptor แนบ <code>Bearer</code> จาก <code>localStorage</code> ทุกครั้ง ส่วน response interceptor ดัก <code>401 TOKEN_EXPIRED</code> แล้ว refresh <b>ครั้งเดียว</b> request ที่เป็นตัวสั่ง refresh จะยิงตัวเองซ้ำทันทีหลังได้ token ใหม่ ส่วน request อื่นที่หมดอายุพร้อมกันจะรอในคิว <code>refreshSubscribers</code> แล้วถูกปล่อยพร้อมกัน ไม่ refresh ซ้ำ</li>
+  <li><code>src/context/AuthContext.jsx</code>: ตอนเปิดหรือรีโหลดหน้า <code>restoreSession()</code> จะเรียก <code>/auth/refresh</code> แล้วต่อด้วย <code>/auth/me</code> เพื่อกู้ session จาก cookie ผู้ใช้จึงไม่ต้อง login ใหม่ทุกครั้งที่กด F5</li>
+</ul>
+
+<!-- ================= 6 ================= -->
+<h2 id="logout"><span class="num">6</span>Logout และการยกเลิก session</h2>
+<p><code>POST /api/auth/logout</code> จะ revoke refresh token ตัวที่อยู่ใน cookie แล้ว <code>clearCookie('refreshToken')</code> และตอบ <span class="pill s2">200</span> เสมอ แม้ไม่มี cookie ฝั่ง frontend ลบ <code>accessToken</code> ออกจาก localStorage และตั้ง <code>user = null</code></p>
+
+<h3>กรณีที่ revoke ทุก session ของผู้ใช้</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>เหตุการณ์</th><th>Endpoint</th><th>หมายเหตุ</th></tr></thead>
+  <tbody>
+    <tr><td>ตั้งรหัสใหม่จากลิงก์อีเมล</td><td><code>POST /auth/reset-password</code></td><td>ทำใน transaction เดียวกับการเปลี่ยนรหัส</td></tr>
+    <tr><td>เปลี่ยนรหัสผ่านเอง</td><td><code>POST /auth/change-password</code></td><td>ลบ cookie เครื่องปัจจุบันด้วย ต้อง login ใหม่</td></tr>
+    <tr><td>Admin ตั้งรหัสให้</td><td><code>PATCH /users/:id/reset-password</code></td><td>บันทึก audit log</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout">access token ที่ออกไปแล้วยังใช้ได้จนหมดอายุ (ไม่เกิน 15 นาที) แม้ session ถูก revoke แล้ว นี่คือข้อแลกเปลี่ยนของ JWT แบบ stateless</div>
+
+<!-- ================= 7 ================= -->
+<h2 id="api"><span class="num">7</span>API Reference</h2>
+<p class="muted">Base URL: <code>http://localhost:5000/api</code> (dev) · บน Vercel ใช้ <code>/api</code> โดเมนเดียวกับ frontend (<code>vercel.json</code> → <code>api/index.js</code>)</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Body</th><th>สำเร็จ</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">POST</td><td><code>/auth/register</code></td><td>—</td><td><code>{ email, password, full_name? }</code></td><td><span class="pill s2">201</span> รอ admin อนุมัติ</td></tr>
+    <tr><td class="mono">POST</td><td><code>/auth/login</code></td><td>—</td><td><code>{ email, password, rememberMe? }</code></td><td><span class="pill s2">200</span> <code>{ accessToken, user }</code> + cookie</td></tr>
+    <tr><td class="mono">POST</td><td><code>/auth/refresh</code></td><td>cookie</td><td>—</td><td><span class="pill s2">200</span> <code>{ accessToken }</code></td></tr>
+    <tr><td class="mono">POST</td><td><code>/auth/logout</code></td><td>cookie</td><td>—</td><td><span class="pill s2">200</span> ลบ cookie</td></tr>
+    <tr><td class="mono">GET</td><td><code>/auth/me</code></td><td>Bearer</td><td>—</td><td><span class="pill s2">200</span> <code>{ user }</code></td></tr>
+    <tr><td class="mono">PATCH</td><td><code>/auth/me</code></td><td>Bearer</td><td><code>{ full_name }</code></td><td><span class="pill s2">200</span> <code>{ user }</code></td></tr>
+    <tr><td class="mono">POST</td><td><code>/auth/change-password</code></td><td>Bearer</td><td><code>{ currentPassword, newPassword }</code></td><td><span class="pill s2">200</span> ลบ cookie</td></tr>
+    <tr><td class="mono">POST</td><td><code>/auth/forgot-password</code></td><td>—</td><td><code>{ email }</code></td><td><span class="pill s2">200</span> ข้อความเดียวกันเสมอ</td></tr>
+    <tr><td class="mono">POST</td><td><code>/auth/reset-password</code></td><td>—</td><td><code>{ token, newPassword }</code></td><td><span class="pill s2">200</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>รหัสสถานะที่ควรรู้</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Status</th><th>ความหมายในระบบนี้</th><th>frontend ควรทำ</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill s4">400</span></td><td>ข้อมูลไม่ครบ / รหัสผ่านไม่ผ่าน policy</td><td>แสดง <code>message</code> หรือ <code>errors[]</code></td></tr>
+    <tr><td><span class="pill s401">401</span></td><td>ไม่มี token, รหัสผิด, หรือ <code>code: TOKEN_EXPIRED</code></td><td>ถ้า <code>TOKEN_EXPIRED</code> ให้ refresh กรณีอื่นไปหน้า login</td></tr>
+    <tr><td><span class="pill s4">403</span></td><td>token ปลอม, refresh ใช้ไม่ได้, บัญชีรออนุมัติ/ถูกระงับ, role ไม่พอ</td><td>แสดงข้อความ</td></tr>
+    <tr><td><span class="pill s4">429</span></td><td>เกิน rate limit</td><td>แสดงข้อความให้รอ</td></tr>
+  </tbody>
+</table>
+</div>
+
+<details>
+  <summary>ตัวอย่างทดสอบด้วย curl</summary>
+<pre><code># 1) Login และเก็บ cookie ไว้ใน cookies.txt
+curl -i -c cookies.txt -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"Admin@12345","rememberMe":true}'
+
+# 2) เรียก endpoint ที่ต้อง login (ใส่ accessToken จากข้อ 1)
+curl http://localhost:5000/api/auth/me \
+  -H "Authorization: Bearer &lt;accessToken&gt;"
+
+# 3) ขอ access token ใหม่ด้วย cookie
+curl -b cookies.txt -X POST http://localhost:5000/api/auth/refresh
+
+# 4) Logout
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:5000/api/auth/logout</code></pre>
+  <p class="muted">cookie ตั้ง <code>secure</code> เฉพาะ <code>NODE_ENV=production</code> จึงทดสอบผ่าน <code>http://localhost</code> ได้</p>
+</details>
+
+<details>
+  <summary>ตัวอย่าง response ของ /auth/login</summary>
+<pre><code>{
+  "message": "เข้าสู่ระบบสำเร็จ",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoi…",
+  "user": {
+    "user_id": "3f6c1e2a-…",
+    "email": "admin@test.com",
+    "full_name": "System Administrator",
+    "role": "admin"
+  }
+}
+
+Set-Cookie: refreshToken=eyJhbGciOi…; Max-Age=2592000; Path=/; HttpOnly; SameSite=Strict</code></pre>
+</details>
+
+<!-- ================= 8 ================= -->
+<h2 id="notes"><span class="num">8</span>ข้อสังเกตจากโค้ดปัจจุบัน</h2>
+<p>จุดที่โค้ดกับเอกสารไม่ตรงกัน หรือควรรู้ไว้ <b>ข้อ 1 แก้แล้ว</b> ข้อ 2–7 บันทึกไว้ ยังไม่ได้แก้โค้ด</p>
+
+<div class="obs">
+  <div class="card done">
+    <h3><span>1 · Request ที่เป็นตัวสั่ง refresh ค้าง แล้วถูกยิงซ้ำทีหลัง</span><span class="sev done">แก้แล้ว</span><span class="sev bug">เดิมเป็นบั๊ก</span></h3>
+    <p>ใน <code>src/api/axiosClient.js</code> เดิม request แรกที่เจอ <code>TOKEN_EXPIRED</code> จะ refresh สำเร็จ แล้วเรียก <code>onRefreshed()</code> ซึ่งปล่อยและล้างคิวไปแล้ว จากนั้นตัวมันเองค่อยเข้าคิว จึงไม่มีใครเรียกมันต่อ</p>
+    <p><b>ผลกระทบ</b> (ยืนยันด้วยการรันโค้ดจริงกับ server จำลอง):</p>
+    <ul>
+      <li>request นั้นค้างจนกว่าจะมี token หมดอายุรอบถัดไป ถ้าไม่มีก็ค้างตลอด หน้าที่มี spinner (เช่นโหลดรายชื่อผู้ใช้) จะหมุนค้าง ส่วนปุ่มที่ไม่มี loading (เช่นเปลี่ยนสิทธิ์) จะกดแล้วเงียบ</li>
+      <li>request ที่ค้าง<b>ไม่ได้หายไป</b> แต่ถูกยิงไป server ใหม่ตอน refresh รอบถัดไป ถ้าเป็นการแก้ข้อมูลจะทับค่าที่ใหม่กว่าได้ เช่น ตั้งสิทธิ์เป็น admin (ค้าง) → กดซ้ำสำเร็จ → เปลี่ยนกลับเป็น user → รอบ refresh ถัดไป role กลับเป็น admin เอง (server ได้รับ <code>admin → user → admin</code>)</li>
+    </ul>
+    <p class="fix">การแก้: หลัง refresh สำเร็จ request ตัวที่สั่ง refresh ยิงตัวเองซ้ำทันทีด้วย token ใหม่ ไม่เข้าคิว</p>
+<pre><code>onRefreshed(data.accessToken);
+originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+return axiosClient(originalRequest);</code></pre>
+    <p class="fix">ใช้ <code>return</code> โดยไม่ <code>await</code> เพื่อให้ error ของ request ที่ยิงซ้ำ reject ตามปกติ ไม่ตกไปที่ <code>catch</code> ที่เด้งไปหน้า login</p>
+  </div>
+
+  <div class="card">
+    <h3><span>2 · Access token เก็บใน localStorage</span><span class="sev sec">ความปลอดภัย</span></h3>
+    <p>README ข้อ 5 บอกว่าเก็บใน memory/React state แต่ <code>AuthContext.jsx</code> และ <code>axiosClient.js</code> ใช้ <code>localStorage</code> ถ้าเว็บโดน XSS สคริปต์ของคนร้ายจะอ่าน token ได้ ส่วน refresh token ยังปลอดภัยเพราะอยู่ใน httpOnly cookie</p>
+  </div>
+
+  <div class="card">
+    <h3><span>3 · อายุ refresh token กำหนดไว้ 3 ที่</span><span class="sev cfg">ค่าตั้งไม่สอดคล้อง</span></h3>
+    <p>JWT ใช้ <code>REMEMBER_ME_EXPIRES_IN</code> / <code>SESSION_EXPIRES_IN</code> แต่ <code>expires_at</code> ใน DB (<code>auth.controller.js</code> บรรทัด 126) และ cookie <code>maxAge</code> (บรรทัด 142) hardcode เป็น 30/1 วัน ถ้าแก้ค่าใน <code>.env</code> สามค่านี้จะไม่ตรงกัน</p>
+    <p>ส่วน <code>JWT_REFRESH_EXPIRES_IN=7d</code> ใน <code>.env.example</code> และ README แทบไม่ได้ใช้ เพราะ <code>login</code> ส่งอายุเข้าไปเองทุกครั้ง</p>
+  </div>
+
+  <div class="card">
+    <h3><span>4 · ไม่มี refresh token rotation</span><span class="sev sec">ความปลอดภัย</span></h3>
+    <p><code>/refresh</code> คืนแค่ access token ใหม่ refresh token ตัวเดิมใช้ซ้ำได้จนหมดอายุ (สูงสุด 30 วัน) ถ้า cookie หลุด คนร้ายใช้ได้จนกว่าผู้ใช้จะ logout หรือเปลี่ยนรหัส</p>
+  </div>
+
+  <div class="card">
+    <h3><span>5 · สิทธิ์ใน token ไม่อัปเดตทันที</span><span class="sev cfg">ข้อแลกเปลี่ยน</span></h3>
+    <p><code>verifyToken</code> ไม่ query DB ถ้า admin ระงับบัญชีหรือลด role ผู้ใช้ยังใช้ access token เดิมได้อีกไม่เกิน 15 นาที นอกจากนี้ <code>/refresh</code> เช็ค <code>is_active</code> แต่ไม่เช็ค <code>is_approved</code></p>
+  </div>
+
+  <div class="card">
+    <h3><span>6 · Rate limit ใช้ memory store</span><span class="sev cfg">Deploy</span></h3>
+    <p>บน Vercel (serverless) ตัวนับแยกกันต่อ instance และหายเมื่อ cold start จึงกัน brute-force ได้ไม่เต็มที่ ควรใช้ store ภายนอก เช่น Redis/Upstash</p>
+  </div>
+
+  <div class="card">
+    <h3><span>7 · ตาราง refresh_tokens ไม่มีการลบแถวเก่า</span><span class="sev ops">ดูแลระบบ</span></h3>
+    <p>login ทุกครั้งเพิ่ม 1 แถว แถวที่หมดอายุหรือ revoke แล้วไม่ถูกลบ ควรตั้ง job ลบเป็นระยะ</p>
+<pre><code>DELETE FROM refresh_tokens WHERE expires_at &lt; NOW() OR revoked;</code></pre>
+  </div>
+</div>
+
+<!-- ================= 9 ================= -->
+<h2 id="files"><span class="num">9</span>แผนที่ไฟล์</h2>
+<pre><code>server/auth/
+├── config/validateEnv.js           # ตรวจ JWT secret ตอน start
+├── controllers/auth.controller.js  # login, refresh, logout, me, change/reset password
+├── middleware/
+│   ├── verifyToken.js              # ตรวจ access token → req.user
+│   ├── checkRole.js                # ตรวจ role
+│   └── rateLimit.js                # จำกัดจำนวนครั้ง login/register/reset
+├── routes/auth.routes.js           # ผูก endpoint กับ middleware + controller
+├── utils/
+│   ├── token.js                    # sign/verify JWT ทั้งสองแบบ
+│   └── password.js                 # bcrypt (cost 12)
+└── db/schema.sql                   # ตาราง users, roles, refresh_tokens
+
+src/                                 # ฝั่ง frontend
+├── api/axiosClient.js              # แนบ Bearer + refresh อัตโนมัติ
+└── context/AuthContext.jsx         # login(), logout(), restoreSession()</code></pre>
+
+<footer>
+  เอกสารคู่กับ <a href="./JWT_LOGIN_FLOW.md">JWT_LOGIN_FLOW.md</a> และ <a href="./README.md">README.md</a> · อ้างอิงโค้ด ณ commit 48eac71 + การแก้ axiosClient.js (1 พ.ย. 2026)
+</footer>
+
+</div>
+</body>
+</html>

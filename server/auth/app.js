@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import validateEnv from './config/validateEnv.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
+import { createBoundaryMiddleware } from './utils/boundaryTiles.js';
 
 validateEnv();
 
@@ -35,6 +36,9 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'auth-api
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+
+// /api/boundary-tiles/{z}/{x}/{y} และ /api/boundary-fonts/... (ชั้นขอบเขตการปกครองบนแผนที่)
+app.use(createBoundaryMiddleware());
 
 // 404 handler
 app.use((req, res) => res.status(404).json({ message: 'ไม่พบ endpoint ที่ร้องขอ' }));

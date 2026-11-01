@@ -41,7 +41,8 @@ Frontend กับ API อยู่โดเมนเดียวกัน → r
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| `vercel.json` | `regions: ["sin1"]`, rewrite `/api/(.*)` → function `/api`, rewrite อื่นทั้งหมด → `/index.html` (React Router) |
+| `vercel.json` | `regions: ["sin1"]`, rewrite `/api/(.*)` → function `/api`, rewrite อื่นทั้งหมด → `/index.html` (React Router); function `maxDuration: 60` + แนบไฟล์ฟอนต์ Kanit ของ `admin-boundary` |
+| `server/auth/utils/boundaryTiles.js` | tile ขอบเขตการปกครอง `/api/boundary-tiles/*` + ฟอนต์ป้าย `/api/boundary-fonts/*` (package `admin-boundary`) — ใช้ทั้ง Vite dev และ Express |
 | `api/index.js` | entry ของ Vercel Function — `export default` Express app |
 | `server/auth/app.js` | สร้าง Express app (ใช้ร่วมกันทั้ง dev และ prod) |
 | `server/auth/server.js` | ใช้เฉพาะตอน dev (`app.listen` port 5000) — prod ไม่ใช้ |
@@ -123,6 +124,7 @@ Vercel → project `gistda-eddy` → Logs (กรอง `/api`) — error ตอ
 - **Vercel Hobby** ใช้ได้เฉพาะงานส่วนตัว/ไม่เชิงพาณิชย์ — ถ้าใช้งานจริงในองค์กรควรย้ายไปแผน Pro หรือ server ของหน่วยงาน
 - **Rate limit** นับแยกต่อ function instance (memory store) จึงหลวมกว่ารัน server เดียว — ถ้าต้องการเข้มงวดให้เปลี่ยนเป็น Redis store
 - **Cold start** ครั้งแรกหลังว่างนาน ~0.5–2 วินาที; Neon compute หลับเมื่อว่างและตื่นเองเมื่อมี request
+- **ขอบเขตการปกครองบนแผนที่** — function instance ใหม่ต้องดึงข้อมูลจาก GISTDA (~150 MB) แล้วสร้างเส้นก่อนตอบ tile แรก (~10–30 วินาที, หน่วยความจำ ~750 MB) cache อยู่ใน `/tmp` ของ instance นั้นเท่านั้น ถ้าใช้งานจริงบ่อยควรย้ายไป server ที่มีดิสก์ถาวร หรือรอ library รองรับ index สำเร็จรูป
 - เงื่อนไขแผนฟรีเปลี่ยนได้ — ตรวจหน้า pricing ของ Vercel/Neon เป็นระยะ
 
 ## สิ่งที่ยังค้าง / ควรทำก่อนใช้งานจริง

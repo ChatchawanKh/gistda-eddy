@@ -4,6 +4,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import { useTheme, alpha } from "@mui/material/styles";
+import AuthBackground from "./AuthBackground";
 
 export default function AuthLayout({ title, subtitle, children }) {
   const theme = useTheme();
@@ -12,6 +13,8 @@ export default function AuthLayout({ title, subtitle, children }) {
   return (
     <Box
       sx={{
+        position: "relative",
+        overflow: "hidden",
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
@@ -20,7 +23,18 @@ export default function AuthLayout({ title, subtitle, children }) {
         p: 2,
       }}
     >
-      <Card sx={{ width: "100%", maxWidth: 400 }}>
+      <AuthBackground />
+      <Card
+        sx={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 400,
+          bgcolor: alpha(background.paper, 0.82),
+          backdropFilter: "blur(18px)",
+          border: `1px solid ${alpha("#FFFFFF", 0.8)}`,
+          boxShadow: `0 24px 60px ${alpha(primary.main, 0.14)}`,
+        }}
+      >
         <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 3 }}>
             <Box

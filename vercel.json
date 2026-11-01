@@ -1,6 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/admin-boundary/fonts/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

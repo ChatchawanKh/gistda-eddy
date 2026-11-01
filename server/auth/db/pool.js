@@ -1,5 +1,4 @@
-// server/auth/db/pool.js
-// เชื่อมต่อ PostgreSQL ด้วย connection pool (ใช้ pg)
+
 import pg from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();

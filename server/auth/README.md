@@ -104,5 +104,7 @@ ALLOWED_EMAIL_DOMAIN=gistda.or.th
 
 ## 5) การไหลของ Token (JWT)
 
+> อธิบายละเอียดพร้อมแผนภาพ: [`JWT_LOGIN_FLOW.md`](./JWT_LOGIN_FLOW.md) · เวอร์ชันหน้าเว็บ [`JWT_LOGIN_FLOW.html`](./JWT_LOGIN_FLOW.html)
+
 - **Access token**: อายุสั้น (default 15 นาที) ส่งกลับใน response body → เก็บใน memory/React state ฝั่ง frontend แนบไปกับทุก request ผ่าน `Authorization: Bearer <token>`
 - **Refresh token**: อายุยาว (default 7 วัน) เก็บใน **httpOnly cookie** (ป้องกัน XSS) และเก็บ hash (SHA-256) ไว้ใน DB เพื่อให้ revoke ได้จริงตอน logout

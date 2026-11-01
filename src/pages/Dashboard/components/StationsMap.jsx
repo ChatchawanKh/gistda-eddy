@@ -1,7 +1,7 @@
 // แผนที่ภาพรวมสถานี (leaflet + react-leaflet)
-// หมุด: เขียว = อัปเดตภายใน 24 ชม., แดง = เกิน 24 ชม., เทา = ไม่เคยมี Observation
-// รองรับ zoom/home/สลับ basemap (street/satellite)/ขยายความสูง/fullscreen
-import { useState, useEffect, useRef } from "react";
+// หมุด: เขียว = ปกติ (อัปเดตภายใน 24 ชม.), แดง = มีปัญหา (เกิน 24 ชม. หรือไม่เคยมี Observation)
+// รองรับ zoom/home/สลับ basemap (street/satellite)/ขอบเขตการปกครอง/ขยายความสูง/fullscreen
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -19,8 +19,20 @@ import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import HeightRoundedIcon from "@mui/icons-material/HeightRounded";
 import FullscreenRoundedIcon from "@mui/icons-material/FullscreenRounded";
 import FullscreenExitRoundedIcon from "@mui/icons-material/FullscreenExitRounded";
+import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
 
-import { timeAgoLabel } from "../utils/formatters";
+import { LEVELS } from "admin-boundary";
+import {
+  boundaryStore,
+  readBoundaryEnabled,
+  writeBoundaryEnabled,
+} from "../utils/boundaryStore";
+import AdminBoundaryMenu from "./AdminBoundaryMenu";
+import StationPopup from "./StationPopup";
+import { STATION_POPUP_CLASS, stationPopupSx } from "../utils/stationPopupStyles";
+
+// โหลด maplibre-gl เฉพาะตอนเปิดชั้นขอบเขตการปกครอง
+const AdminBoundaryLayer = lazy(() => import("./AdminBoundaryLayer"));
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const BASE_HEIGHT = 340;
@@ -119,11 +131,14 @@ function FitAllStations({ points }) {
 }
 
 // เลื่อนแผนที่ไปหาสถานีที่ถูกเลือก (จาก dropdown หรือคลิกการ์ด)
-function FlyToSelected({ point }) {
+// รับพิกัดเป็นตัวเลข (ไม่ใช่ array ที่สร้างใหม่ทุก render) — ขยับเฉพาะตอนเปลี่ยนสถานีจริง
+// ไม่ใช่ทุกครั้งที่ component แม่ render ใหม่ (สลับ basemap, เปิดเมนู, ข้อมูลอัปเดต)
+// ไม่ใช้ flyTo เพราะซูมออก-เข้าระหว่างทางทำให้แผนที่ดูสั่น — setView แบบ animate เลื่อน/ซูมเข้าตรง ๆ
+function FlyToSelected({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
-    if (point) map.flyTo(point, 13, { duration: 0.6 });
-  }, [point, map]);
+    map.setView([lat, lng], 13, { animate: true });
+  }, [lat, lng, map]);
   return null;
 }
 
@@ -231,6 +246,12 @@ export default function StationsMap({
   const [mapInstance, setMapInstance] = useState(null);
   // จอสัมผัส: แผนที่ล็อกการลากอยู่ (ดู TouchDragGuard) — ใช้แสดงคำแนะนำ
   const [touchLocked, setTouchLocked] = useState(false);
+  // ชั้นขอบเขตการปกครอง: เปิด/ปิดทั้งชั้น (จำไว้ใน localStorage) และเมนูตั้งค่ารายระดับ
+  const [boundaryEnabled, setBoundaryEnabled] = useState(readBoundaryEnabled);
+  const [boundaryMenuOpen, setBoundaryMenuOpen] = useState(false);
+  // กาง/ยุบรายละเอียดในเมนู — เก็บไว้ที่นี่ ปิดแล้วเปิดเมนูใหม่ยังเป็นแบบเดิม
+  const [boundaryMenuExpanded, setBoundaryMenuExpanded] = useState(false);
+  const boundaryButtonRef = useRef(null);
   const wrapperRef = useRef(null);
 
   // ซิงก์ state กับสถานะ fullscreen จริงของเบราว์เซอร์ เผื่อผู้ใช้กด Esc
@@ -260,6 +281,13 @@ export default function StationsMap({
 
   const toggleBasemap = () =>
     setBasemap((b) => (b === "street" ? "satellite" : "street"));
+
+  // เปิดสวิตช์หลัก = เปิดทุกระดับ (จังหวัด/อำเภอ/ตำบล) ด้วย ไม่ค้างระดับที่เคยปิดไว้
+  const handleBoundaryEnabledChange = (enabled) => {
+    if (enabled) LEVELS.forEach((level) => boundaryStore.setLevelVisible(level, true));
+    setBoundaryEnabled(enabled);
+    writeBoundaryEnabled(enabled);
+  };
 
   const handleZoomIn = () => mapInstance?.zoomIn();
   const handleZoomOut = () => mapInstance?.zoomOut();
@@ -320,6 +348,7 @@ export default function StationsMap({
         transition: `height ${HEIGHT_TRANSITION_MS}ms ease`,
         bgcolor: background.paper,
         "& .leaflet-container": { height: "100%", width: "100%" },
+        ...stationPopupSx(theme),
       }}
     >
       {/* ปุ่ม zoom/home/สลับ basemap (มุมซ้ายบน) แทนปุ่ม default ของ Leaflet */}
@@ -405,7 +434,42 @@ export default function StationsMap({
             )}
           </IconButton>
         </Tooltip>
+        <Divider />
+        <Tooltip
+          title="ขอบเขตการปกครอง"
+          placement="right"
+        >
+          <IconButton
+            ref={boundaryButtonRef}
+            size="small"
+            onClick={() => setBoundaryMenuOpen((v) => !v)}
+            aria-expanded={boundaryMenuOpen}
+            sx={{
+              borderRadius: 0,
+              bgcolor: boundaryMenuOpen ? theme.palette.action.selected : undefined,
+              "&:hover": { bgcolor: theme.palette.action.hover },
+            }}
+          >
+            <LayersRoundedIcon
+              sx={{
+                fontSize: 18,
+                color: boundaryEnabled ? theme.palette.primary.main : text.secondary,
+              }}
+            />
+          </IconButton>
+        </Tooltip>
       </Box>
+
+      {boundaryMenuOpen && (
+        <AdminBoundaryMenu
+          enabled={boundaryEnabled}
+          onEnabledChange={handleBoundaryEnabledChange}
+          expanded={boundaryMenuExpanded}
+          onExpandedChange={setBoundaryMenuExpanded}
+          onClose={() => setBoundaryMenuOpen(false)}
+          anchorRef={boundaryButtonRef}
+        />
+      )}
 
       {/* ปุ่มขยายความสูง/fullscreen (มุมขวาบน) */}
       <Box
@@ -515,8 +579,15 @@ export default function StationsMap({
         {basemap === "satellite" && (
           <TileLayer url={BASEMAPS.satellite.labelsUrl} pane="overlayPane" />
         )}
+        {boundaryEnabled && (
+          <Suspense fallback={null}>
+            <AdminBoundaryLayer />
+          </Suspense>
+        )}
         <FitAllStations points={points} />
-        {selectedPoint && <FlyToSelected point={selectedPoint} />}
+        {selectedPoint && (
+          <FlyToSelected lat={selectedPoint[0]} lng={selectedPoint[1]} />
+        )}
         <MapResizeHandler resizeKey={`${isExpanded}-${isFullscreen}`} />
         <MapInstanceSetter onReady={setMapInstance} />
         <TouchDragGuard enabled={!isFullscreen} onLockChange={setTouchLocked} />
@@ -529,11 +600,13 @@ export default function StationsMap({
           const latest = getLatestTime(t);
           // eslint-disable-next-line react-hooks/purity -- สีหมุดสะท้อนความ stale เทียบเวลาปัจจุบัน ณ ตอน render โดยตั้งใจ
           const isStale = latest ? Date.now() - new Date(latest).getTime() > STALE_MS : true;
-          const color = !latest
-            ? theme.palette.grey?.[500] || "#9e9e9e"
+          // isStale เป็น true ด้วยเมื่อไม่เคยมีข้อมูล → แดงเหมือนกัน (ข้อความสถานะยังแยกให้)
+          const color = isStale ? errorColor.main : success.main;
+          const statusLabel = !latest
+            ? "ยังไม่มีข้อมูล"
             : isStale
-              ? errorColor.main
-              : success.main;
+              ? "ไม่ได้อัปเดตเกิน 24 ชม."
+              : "อัปเดตภายใน 24 ชม.";
           const isActive = String(t["@iot.id"]) === String(selectedStationId);
 
           return (
@@ -545,35 +618,13 @@ export default function StationsMap({
                 click: () => onSelectStation(String(t["@iot.id"])),
               }}
             >
-              {/* ข้อมูลใน popup มาจาก FROST ทั้งหมด: Thing (ชื่อ/properties),
-                  Location.name, Datastreams และ Observation ล่าสุด
-                  แสดงเฉพาะ field ที่มีค่า */}
-              <Popup>
-                <strong>{t.name}</strong>
-                {t.Locations?.[0]?.name && (
-                  <>
-                    <br />
-                    {t.Locations[0].name}
-                  </>
-                )}
-                {t.properties?.institute && (
-                  <>
-                    <br />
-                    หน่วยงาน {t.properties.institute}
-                  </>
-                )}
-                <br />
-                {(t.Datastreams || []).length} Datastreams
-                <br />
-                อัปเดต {timeAgoLabel(latest)}
-                <br />
-                พิกัด {position[0]?.toFixed(4)}, {position[1]?.toFixed(4)}
-                {Number.isFinite(t.properties?.elevation_m) && (
-                  <>
-                    <br />
-                    ความสูง {t.properties.elevation_m.toLocaleString("th-TH")} ม.
-                  </>
-                )}
+              <Popup className={STATION_POPUP_CLASS} maxWidth={240} minWidth={208}>
+                <StationPopup
+                  thing={t}
+                  position={position}
+                  latest={latest}
+                  status={{ color, label: statusLabel }}
+                />
               </Popup>
             </Marker>
           );
